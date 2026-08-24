@@ -1,58 +1,115 @@
 @import "tailwindcss";
 
+@theme {
+  /* Colors */
+  --color-acid-lime: #05c92f;
+  --color-sticker-yellow: #fcea59;
+  --color-cotton-pink: #ffd0e2;
+  --color-powder-blue: #a7cbf6;
+  --color-obsidian: #000000;
+  --color-carbon: #0f0f0f;
+  --color-ash-gray: #5a585a;
+  --color-slate-gray: #6e726e;
+  --color-paper-white: #f9faf9;
+  --color-pure-white: #ffffff;
+  --color-bone: #ecefec;
+  --color-plaster: #eeeeee;
+
+  /* Typography */
+  --font-tomato-grotesk: 'Space Grotesk', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  /* Border Radius */
+  --radius-nav: 9px;
+  --radius-tags: 14px;
+  --radius-cards: 17.5px;
+  --radius-inputs: 35px;
+  --radius-buttons: 35px;
+  --radius-largeelements: 53px;
+}
+
 @layer base {
   :root {
-    --bg-app: #f8fafc;
-    --bg-card: #ffffff;
-    --primary-green: #00a86b;
-    --primary-green-hover: #00935d;
-    --primary-green-light: #e6f7f0;
-    --text-main: #0f172a;
-    --text-muted: #64748b;
-    --border-light: #e2e8f0;
+    --color-acid-lime: #05c92f;
+    --color-sticker-yellow: #fcea59;
+    --color-cotton-pink: #ffd0e2;
+    --color-powder-blue: #a7cbf6;
+    --color-obsidian: #000000;
+    --color-carbon: #0f0f0f;
+    --color-ash-gray: #5a585a;
+    --color-slate-gray: #6e726e;
+    --color-paper-white: #f9faf9;
+    --color-pure-white: #ffffff;
+    --color-bone: #ecefec;
+    --color-plaster: #eeeeee;
   }
 
   body {
-    background-color: var(--bg-app);
-    color: var(--text-main);
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--color-paper-white);
+    color: var(--color-carbon);
+    font-family: 'Plus Jakarta Sans', 'Space Grotesk', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
-    overflow-x: hidden;
+    letter-spacing: -0.01em;
   }
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+/* Ctrl Flat Architectural Components (No Shadows, Pure 1px Borders) */
+.ctrl-card {
+  background-color: var(--color-pure-white);
+  border: 1px solid #0f0f0f;
+  border-radius: 17.5px;
+  padding: 24px;
 }
 
-/* Clean FinTech Cards */
-.fintech-card {
-  background: #ffffff;
-  border: 1px solid #eef2f6;
-  border-radius: 1.25rem;
-  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.02);
+.ctrl-card-soft {
+  background-color: var(--color-pure-white);
+  border: 1px solid #e2e8f0;
+  border-radius: 17.5px;
+  padding: 24px;
 }
 
-.fintech-card-interactive {
+.ctrl-btn-primary {
+  background-color: #0f0f0f;
+  color: #ffffff;
+  border: 1px solid #0f0f0f;
+  border-radius: 35px;
+  padding: 12px 24px;
+  font-weight: 600;
+  font-size: 14px;
   transition: all 0.15s ease-in-out;
+  cursor: pointer;
 }
-.fintech-card-interactive:active {
-  transform: scale(0.97);
+.ctrl-btn-primary:hover {
+  background-color: #000000;
+  transform: translateY(-1px);
+}
+.ctrl-btn-primary:active {
+  transform: translateY(0);
 }
 
-/* Thermal Receipt Print */
+.ctrl-btn-lime {
+  background-color: #05c92f;
+  color: #0f0f0f;
+  border: 1px solid #0f0f0f;
+  border-radius: 35px;
+  padding: 12px 24px;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.15s ease-in-out;
+  cursor: pointer;
+}
+.ctrl-btn-lime:hover {
+  background-color: #04b32a;
+}
+
+.ctrl-pill-tag {
+  border-radius: 14px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid #0f0f0f;
+}
+
+/* Thermal Print */
 @media print {
   body * {
     visibility: hidden;

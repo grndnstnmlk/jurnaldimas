@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, 
-  User, 
   ShoppingCart, 
   Plus, 
   Minus, 
   Trash2, 
   Printer, 
-  Check, 
   Calendar, 
   Tag, 
   ArrowRight,
@@ -17,18 +15,14 @@ import {
   Building2,
   TrendingUp,
   Receipt,
-  FileText,
-  CreditCard,
   Banknote,
   Flame,
   LayoutGrid,
-  List,
-  SlidersHorizontal,
-  ChevronRight,
   Zap,
   Star,
   CheckCircle2,
-  X
+  X,
+  PlusCircle
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { formatRupiah } from '../utils/format';
@@ -87,19 +81,18 @@ export default function KasirPOS() {
     }
   };
 
-  // Cigarette Category Grid Icons (Matching Reference App Image)
+  // Confetti Category Pills matching Ctrl Design System (Sticker Yellow, Cotton Pink, Powder Blue, Bone)
   const categoryTiles = [
-    { id: 'ALL', label: 'Semua Produk', icon: Layers, color: 'bg-emerald-50 text-emerald-600 border-emerald-100' },
-    { id: 'ESTE', label: 'ESTE / ESSE', icon: Flame, color: 'bg-teal-50 text-teal-600 border-teal-100' },
-    { id: 'SURYA', label: 'Surya & 54RYA', icon: Star, color: 'bg-amber-50 text-amber-600 border-amber-100' },
-    { id: 'ANG', label: 'ANG Series', icon: Package, color: 'bg-blue-50 text-blue-600 border-blue-100' },
-    { id: 'BALVER', label: 'BALVER', icon: Zap, color: 'bg-cyan-50 text-cyan-600 border-cyan-100' },
-    { id: 'AVATAR', label: 'AVATAR', icon: Sparkles, color: 'bg-purple-50 text-purple-600 border-purple-100' },
-    { id: 'MD', label: 'MD 16', icon: Tag, color: 'bg-rose-50 text-rose-600 border-rose-100' },
-    { id: 'HM', label: 'HM & HMIN', icon: LayoutGrid, color: 'bg-indigo-50 text-indigo-600 border-indigo-100' }
+    { id: 'ALL', label: 'Semua Produk', bg: 'bg-[#ffffff]', border: 'border-[#0f0f0f]' },
+    { id: 'ESTE', label: 'ESTE / ESSE', bg: 'bg-[#fcea59]', border: 'border-[#0f0f0f]' },
+    { id: 'SURYA', label: 'Surya & 54RYA', bg: 'bg-[#ffd0e2]', border: 'border-[#0f0f0f]' },
+    { id: 'ANG', label: 'ANG Series', bg: 'bg-[#a7cbf6]', border: 'border-[#0f0f0f]' },
+    { id: 'BALVER', label: 'BALVER', bg: 'bg-[#ecefec]', border: 'border-[#0f0f0f]' },
+    { id: 'AVATAR', label: 'AVATAR', bg: 'bg-[#ffd0e2]', border: 'border-[#0f0f0f]' },
+    { id: 'MD', label: 'MD 16', bg: 'bg-[#fcea59]', border: 'border-[#0f0f0f]' },
+    { id: 'HM', label: 'HM & HMIN', bg: 'bg-[#a7cbf6]', border: 'border-[#0f0f0f]' }
   ];
 
-  // Helper to get unit price for selected customer
   const getProductPriceForCustomer = (productId, customerId) => {
     if (!customerId) {
       const prod = products.find(p => p.id === productId);
@@ -177,17 +170,6 @@ export default function KasirPOS() {
     updateQty(productId, amount);
   };
 
-  const updateItemPrice = (productId, newPrice) => {
-    const val = Number(newPrice) || 0;
-    setCart((prevCart) =>
-      prevCart.map((item) =>
-        item.product_id === productId
-          ? { ...item, unit_price: val, subtotal: val * item.qty }
-          : item
-      )
-    );
-  };
-
   const removeFromCart = (productId) => {
     setCart((prevCart) => prevCart.filter((i) => i.product_id !== productId));
   };
@@ -198,10 +180,6 @@ export default function KasirPOS() {
 
   const totalAmount = cart.reduce((acc, item) => acc + item.subtotal, 0);
   const totalItemsCount = cart.reduce((acc, item) => acc + item.qty, 0);
-  const totalEstimatedProfit = cart.reduce(
-    (acc, item) => acc + (item.subtotal - item.modal_price * item.qty),
-    0
-  );
 
   const handleConfirmPayment = async (paymentData) => {
     setIsSubmitting(true);
@@ -254,45 +232,55 @@ export default function KasirPOS() {
   const selectedCustomerObj = customers.find((c) => c.id === Number(selectedCustomerId));
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5 space-y-5">
+    <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-6 space-y-6">
       
-      {/* 1. HERO BALANCE CARD (Exact visual style from reference image) */}
-      <div className="fintech-card p-5 sm:p-6 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-            Total Omset Penjualan
-          </span>
-          <div className="text-2xl sm:text-3xl font-black text-emerald-600 font-mono tracking-tight mt-0.5">
-            {formatRupiah(dashboardStats.total_omset)}
+      {/* 1. HERO SECTION: DISPLAY HEADLINE & CHROMATIC CONFETTI CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+        
+        {/* Main Display Omset Card (Cotton Pink Confetti Card) */}
+        <div className="md:col-span-7 bg-[#ffd0e2] rounded-[17.5px] border border-[#0f0f0f] p-6 flex flex-col justify-between">
+          <div>
+            <div className="inline-block px-3 py-1 rounded-[14px] bg-[#ffffff] border border-[#0f0f0f] text-[11px] font-bold text-[#0f0f0f] uppercase tracking-wider mb-2">
+              Akumulasi Omset
+            </div>
+            <div className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#0f0f0f] tracking-tight leading-[0.9] mt-1 font-sans">
+              {formatRupiah(dashboardStats.total_omset)}
+            </div>
+            <p className="text-xs text-[#5a585a] mt-2 font-medium">
+              Sistem kasir real-time & pencatatan jurnal terpadu CV. Master Cigarettes.
+            </p>
           </div>
-          <div className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span>Kasir Online Real-time CV. Master Cigarettes</span>
+
+          <div className="mt-6 flex items-center gap-2">
+            <button
+              onClick={() => searchInputRef.current?.focus()}
+              className="ctrl-btn-lime flex items-center space-x-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Input Transaksi</span>
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => searchInputRef.current?.focus()}
-            className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs sm:text-sm shadow-sm flex items-center gap-1.5 transition active:scale-95"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ Transaksi Baru</span>
-          </button>
-        </div>
-      </div>
+        {/* Customer & Date Selector (Sticker Yellow Confetti Card) */}
+        <div className="md:col-span-5 bg-[#fcea59] rounded-[17.5px] border border-[#0f0f0f] p-6 flex flex-col justify-between">
+          <div>
+            <div className="inline-block px-3 py-1 rounded-[14px] bg-[#ffffff] border border-[#0f0f0f] text-[11px] font-bold text-[#0f0f0f] uppercase tracking-wider mb-2">
+              Pilih Pelanggan
+            </div>
+            <h3 className="text-xl font-bold text-[#0f0f0f] leading-tight">
+              [{selectedCustomerObj ? selectedCustomerObj.code : '-'}] {selectedCustomerObj ? selectedCustomerObj.name : 'Umum'}
+            </h3>
+            <p className="text-xs text-[#5a585a] mt-1">
+              Matriks harga khusus aktif otomatis per akun toko.
+            </p>
+          </div>
 
-      {/* 2. CUSTOMER & DATE BAR */}
-      <div className="fintech-card p-4 bg-white grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-        <div>
-          <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-            Pilih Pelanggan (Harga Otomatis Menyesuaikan)
-          </label>
-          <div className="relative">
+          <div className="mt-4 space-y-2">
             <select
               value={selectedCustomerId}
               onChange={(e) => handleCustomerChange(e.target.value)}
-              className="w-full bg-slate-50 text-slate-900 px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 font-bold text-xs sm:text-sm cursor-pointer shadow-xs"
+              className="w-full bg-[#ffffff] text-[#0f0f0f] px-3.5 py-2.5 rounded-[35px] border border-[#0f0f0f] font-bold text-xs cursor-pointer focus:outline-none"
             >
               {customers.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -300,81 +288,70 @@ export default function KasirPOS() {
                 </option>
               ))}
             </select>
+            <input
+              type="date"
+              value={txDate}
+              onChange={(e) => setTxDate(e.target.value)}
+              className="w-full bg-[#ffffff] text-[#0f0f0f] px-3.5 py-2 rounded-[35px] border border-[#0f0f0f] text-xs font-semibold focus:outline-none"
+            />
           </div>
         </div>
 
-        <div>
-          <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-            Tanggal Nota
-          </label>
-          <input
-            type="date"
-            value={txDate}
-            onChange={(e) => setTxDate(e.target.value)}
-            className="w-full bg-slate-50 text-slate-900 px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 text-xs sm:text-sm font-semibold shadow-xs"
-          />
-        </div>
       </div>
 
-      {/* 3. CATEGORY BENTO ICONS GRID (Exact layout from reference image) */}
-      <div className="space-y-2.5">
+      {/* 2. CATEGORY CONFETTI CHIPS (Flat, Border-driven, 14-17.5px Radii) */}
+      <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-extrabold text-sm sm:text-base text-slate-900">
-            Kategori Produk Rokok
+          <h2 className="text-lg font-bold text-[#0f0f0f] tracking-tight">
+            Kategori Seri Rokok
           </h2>
-          <span className="text-xs text-slate-500">
-            {products.length} Produk Terdaftar
+          <span className="text-xs text-[#5a585a] font-medium">
+            {products.length} Macam Produk
           </span>
         </div>
 
-        <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-8 gap-2.5 sm:gap-3">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
           {categoryTiles.map((tile) => {
-            const Icon = tile.icon;
             const isSelected = selectedCategory === tile.id;
             return (
               <button
                 key={tile.id}
                 onClick={() => setSelectedCategory(tile.id)}
-                className={`fintech-card fintech-card-interactive p-3 sm:p-4 rounded-2xl flex flex-col items-center justify-center text-center transition ${
+                className={`px-4 py-2 rounded-[35px] text-xs font-bold whitespace-nowrap transition-all border ${tile.border} ${tile.bg} ${
                   isSelected 
-                    ? 'ring-2 ring-emerald-500 bg-emerald-50/40 shadow-sm' 
-                    : 'bg-white hover:bg-slate-50/80'
+                    ? 'ring-2 ring-[#0f0f0f] font-black scale-105 shadow-xs' 
+                    : 'opacity-85 hover:opacity-100 hover:scale-102'
                 }`}
               >
-                <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center mb-2 border ${tile.color}`}>
-                  <Icon className="w-5 h-5" />
-                </div>
-                <span className={`text-[11px] sm:text-xs font-bold leading-tight line-clamp-1 ${
-                  isSelected ? 'text-emerald-700 font-extrabold' : 'text-slate-700'
-                }`}>
-                  {tile.label}
-                </span>
+                {tile.label}
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* 4. PRODUCT SEARCH & CATALOG LIST */}
-      <div className="space-y-3 pt-2">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="font-extrabold text-sm sm:text-base text-slate-900 flex items-center gap-2">
-            <span>Daftar Produk</span>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-bold">
+      {/* 3. PRODUCT CATALOG (Pure White Cards, 17.5px Radius, 1px #0f0f0f Border) */}
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center space-x-2">
+            <h2 className="text-lg font-bold text-[#0f0f0f] tracking-tight">
+              Katalog Produk
+            </h2>
+            <span className="px-2.5 py-0.5 rounded-[14px] bg-[#ecefec] text-[#0f0f0f] text-xs font-bold border border-[#0f0f0f]/20">
               {filteredProducts.length}
             </span>
-          </h2>
+          </div>
 
-          {/* Search Bar */}
-          <div className="relative w-full max-w-xs">
-            <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+          {/* Search Input (35px Radius Pill) */}
+          <div className="relative w-full sm:w-80">
+            <Search className="absolute left-3.5 top-2.5 w-4 h-4 text-[#5a585a]" />
             <input
               ref={searchInputRef}
               type="text"
-              placeholder="Cari rokok (e.g. ESTE, SURYA...)"
+              placeholder="Cari rokok (e.g. ESTE, SURYA)..."
               value={searchProduct}
               onChange={(e) => setSearchProduct(e.target.value)}
-              className="w-full bg-white text-slate-900 pl-9 pr-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 text-xs shadow-xs"
+              className="w-full bg-[#ffffff] text-[#0f0f0f] pl-10 pr-4 py-2 rounded-[35px] border border-[#0f0f0f] text-xs font-medium focus:outline-none"
             />
           </div>
         </div>
@@ -389,65 +366,67 @@ export default function KasirPOS() {
             return (
               <div
                 key={p.id}
-                className={`fintech-card p-4 rounded-2xl bg-white transition-all flex flex-col justify-between ${
-                  inCartItem ? 'border-emerald-400 ring-1 ring-emerald-400 bg-emerald-50/10' : ''
+                className={`bg-[#ffffff] rounded-[17.5px] border p-5 transition flex flex-col justify-between ${
+                  inCartItem ? 'border-[#0f0f0f] ring-2 ring-[#0f0f0f] bg-[#f9faf9]' : 'border-[#0f0f0f]/30 hover:border-[#0f0f0f]'
                 }`}
               >
                 <div>
                   <div className="flex items-start justify-between gap-2">
-                    <div className="font-bold text-sm text-slate-900 leading-snug">
+                    <h4 className="font-bold text-sm text-[#0f0f0f] leading-snug">
                       {p.name}
-                    </div>
+                    </h4>
                     {inCartItem && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-white shadow-xs">
+                      <span className="px-2.5 py-0.5 rounded-[14px] bg-[#05c92f] text-[#0f0f0f] text-[10px] font-black border border-[#0f0f0f]">
                         {inCartItem.qty}x
                       </span>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2 mt-1.5">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                      isLowStock ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-slate-100 text-slate-600'
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-[14px] border ${
+                      isLowStock 
+                        ? 'bg-[#ffd0e2] text-[#0f0f0f] border-[#0f0f0f]' 
+                        : 'bg-[#ecefec] text-[#5a585a] border-[#0f0f0f]/20'
                     }`}>
                       Stok: {p.stok_akhir ?? 0}
                     </span>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-[10px] text-[#5a585a]">
                       Tier: {selectedCustomerObj ? selectedCustomerObj.code : 'Umum'}
                     </span>
                   </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                <div className="mt-5 pt-3 border-t border-[#0f0f0f]/10 flex items-center justify-between">
                   <div>
-                    <span className="text-[10px] text-slate-400 uppercase font-semibold block">Harga Jual</span>
-                    <span className="text-base font-black text-emerald-600 font-mono">
+                    <span className="text-[10px] text-[#5a585a] uppercase font-bold block">Harga Jual</span>
+                    <span className="text-base font-black text-[#0f0f0f] font-mono">
                       {formatRupiah(customerPrice)}
                     </span>
                   </div>
 
                   <div className="flex items-center gap-1.5">
                     {inCartItem ? (
-                      <div className="flex items-center space-x-1 bg-slate-100 rounded-xl p-1">
+                      <div className="flex items-center space-x-1 bg-[#ecefec] rounded-[35px] p-1 border border-[#0f0f0f]">
                         <button
                           onClick={() => updateQty(p.id, -1)}
-                          className="p-1 rounded-lg bg-white shadow-xs text-slate-700 hover:bg-slate-50"
+                          className="w-6 h-6 rounded-full bg-[#ffffff] text-[#0f0f0f] font-bold flex items-center justify-center hover:bg-[#ffd0e2] transition"
                         >
-                          <Minus className="w-3.5 h-3.5" />
+                          <Minus className="w-3 h-3" />
                         </button>
-                        <span className="w-6 text-center font-bold text-xs text-slate-900 font-mono">
+                        <span className="w-6 text-center font-bold text-xs text-[#0f0f0f] font-mono">
                           {inCartItem.qty}
                         </span>
                         <button
                           onClick={() => updateQty(p.id, 1)}
-                          className="p-1 rounded-lg bg-emerald-500 text-white shadow-xs hover:bg-emerald-600"
+                          className="w-6 h-6 rounded-full bg-[#0f0f0f] text-[#ffffff] font-bold flex items-center justify-center hover:bg-[#05c92f] hover:text-[#0f0f0f] transition"
                         >
-                          <Plus className="w-3.5 h-3.5" />
+                          <Plus className="w-3 h-3" />
                         </button>
                       </div>
                     ) : (
                       <button
                         onClick={() => addToCart(p, 1)}
-                        className="px-3.5 py-1.5 rounded-xl bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white font-bold text-xs transition flex items-center gap-1 border border-emerald-200"
+                        className="px-4 py-1.5 rounded-[35px] bg-[#0f0f0f] hover:bg-[#000000] text-[#ffffff] font-bold text-xs border border-[#0f0f0f] transition flex items-center gap-1 active:scale-95"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         <span>Tambah</span>
@@ -461,38 +440,38 @@ export default function KasirPOS() {
         </div>
       </div>
 
-      {/* 5. FLOATING BOTTOM CART BAR (Active when cart has items) */}
+      {/* 4. FLOATING CHECKOUT BAR (Black Pill with Acid Lime CTA) */}
       {cart.length > 0 && (
-        <div className="fixed bottom-4 left-4 right-4 z-40 max-w-5xl mx-auto">
-          <div className="bg-slate-900 text-white p-4 rounded-2xl shadow-2xl flex items-center justify-between border border-slate-800">
+        <div className="fixed bottom-5 left-4 right-4 z-40 max-w-[1200px] mx-auto">
+          <div className="bg-[#0f0f0f] text-[#ffffff] p-4 rounded-[53px] border border-[#0f0f0f] flex items-center justify-between shadow-2xl">
             
             <div 
               onClick={() => setShowCartDrawer(true)}
-              className="cursor-pointer flex items-center space-x-3"
+              className="cursor-pointer flex items-center space-x-3.5 pl-2"
             >
-              <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-black text-sm shadow-md">
+              <div className="w-10 h-10 rounded-full bg-[#05c92f] text-[#0f0f0f] flex items-center justify-center font-black text-sm border border-[#0f0f0f]">
                 {totalItemsCount}
               </div>
               <div>
-                <div className="text-[11px] text-slate-400 font-bold uppercase">Total Tagihan ({cart.length} item)</div>
-                <div className="text-lg sm:text-xl font-black text-emerald-400 font-mono">
+                <div className="text-[11px] text-[#ecefec] font-bold uppercase">Total Tagihan ({cart.length} item)</div>
+                <div className="text-xl font-black text-[#ffffff] font-mono">
                   {formatRupiah(totalAmount)}
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 pr-1">
               <button
                 onClick={() => setShowCartDrawer(true)}
-                className="hidden sm:inline-flex px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200"
+                className="hidden sm:inline-flex px-4 py-2.5 rounded-[35px] bg-[#222222] hover:bg-[#333333] text-xs font-bold text-[#ffffff]"
               >
                 Rincian
               </button>
               <button
                 onClick={() => setShowPaymentModal(true)}
-                className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-emerald-500/20 flex items-center gap-1.5 transition active:scale-95"
+                className="ctrl-btn-lime flex items-center gap-2"
               >
-                <span>Bayar Sekarang</span>
+                <span>Bayar & Cetak Nota</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -501,78 +480,78 @@ export default function KasirPOS() {
         </div>
       )}
 
-      {/* 6. CART DETAILS DRAWER / MODAL */}
+      {/* 5. CART DETAILS DRAWER */}
       {showCartDrawer && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-xs">
-          <div className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-xs">
+          <div className="w-full max-w-lg bg-[#ffffff] rounded-t-[26px] sm:rounded-[26px] border border-[#0f0f0f] flex flex-col max-h-[85vh] overflow-hidden shadow-2xl">
             
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+            <div className="p-4 border-b border-[#0f0f0f]/10 flex items-center justify-between bg-[#ecefec]">
               <div className="flex items-center space-x-2">
-                <ShoppingCart className="w-5 h-5 text-emerald-600" />
-                <h3 className="font-extrabold text-slate-900 text-sm sm:text-base">Rincian Nota Penjualan</h3>
+                <ShoppingCart className="w-5 h-5 text-[#0f0f0f]" />
+                <h3 className="font-extrabold text-[#0f0f0f] text-base">Rincian Nota Kasir</h3>
               </div>
-              <button onClick={() => setShowCartDrawer(false)} className="p-1 rounded-full text-slate-400 hover:text-slate-700">
+              <button onClick={() => setShowCartDrawer(false)} className="p-1.5 rounded-full hover:bg-[#ffffff] text-[#0f0f0f]">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
+            <div className="flex-1 overflow-y-auto p-4 space-y-2.5 bg-[#f9faf9]">
               {cart.map((item) => (
-                <div key={item.product_id} className="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-2">
+                <div key={item.product_id} className="p-3.5 rounded-[17.5px] bg-[#ffffff] border border-[#0f0f0f]/15 space-y-2">
                   <div className="flex justify-between items-start">
-                    <div className="font-bold text-xs sm:text-sm text-slate-800">{item.name}</div>
-                    <button onClick={() => removeFromCart(item.product_id)} className="text-slate-400 hover:text-rose-500 p-0.5">
+                    <div className="font-bold text-xs sm:text-sm text-[#0f0f0f]">{item.name}</div>
+                    <button onClick={() => removeFromCart(item.product_id)} className="text-[#5a585a] hover:text-rose-600 p-0.5">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <div className="text-xs text-slate-500 font-mono">
+                    <div className="text-xs text-[#5a585a] font-mono">
                       @ {formatRupiah(item.unit_price)}
                     </div>
-                    <div className="flex items-center space-x-1 bg-white border border-slate-200 rounded-lg p-0.5">
-                      <button onClick={() => updateQty(item.product_id, -1)} className="p-1 text-slate-600 hover:bg-slate-100 rounded">
+                    <div className="flex items-center space-x-1 bg-[#ecefec] border border-[#0f0f0f]/20 rounded-[35px] p-0.5">
+                      <button onClick={() => updateQty(item.product_id, -1)} className="p-1 text-[#0f0f0f] hover:bg-[#ffffff] rounded-full">
                         <Minus className="w-3 h-3" />
                       </button>
-                      <span className="w-6 text-center font-bold text-xs text-slate-900 font-mono">{item.qty}</span>
-                      <button onClick={() => updateQty(item.product_id, 1)} className="p-1 text-slate-600 hover:bg-slate-100 rounded">
+                      <span className="w-6 text-center font-bold text-xs text-[#0f0f0f] font-mono">{item.qty}</span>
+                      <button onClick={() => updateQty(item.product_id, 1)} className="p-1 text-[#0f0f0f] hover:bg-[#ffffff] rounded-full">
                         <Plus className="w-3 h-3" />
                       </button>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-1 pt-1">
-                    <span className="text-[9px] text-slate-400 font-bold uppercase">Grosir:</span>
+                    <span className="text-[9px] text-[#5a585a] font-bold uppercase">Grosir:</span>
                     {[5, 10, 20, 50].map((amt) => (
                       <button
                         key={amt}
                         onClick={() => addWholesaleQty(item.product_id, amt)}
-                        className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-white hover:bg-emerald-50 text-slate-600 hover:text-emerald-700 border border-slate-200 transition"
+                        className="px-2 py-0.5 rounded-[14px] text-[9px] font-bold bg-[#ffffff] hover:bg-[#fcea59] text-[#0f0f0f] border border-[#0f0f0f] transition"
                       >
                         +{amt}
                       </button>
                     ))}
                   </div>
 
-                  <div className="flex justify-between items-center text-xs pt-1 border-t border-slate-200">
-                    <span className="text-slate-400 text-[10px]">Subtotal:</span>
-                    <span className="font-black text-slate-900 font-mono">{formatRupiah(item.subtotal)}</span>
+                  <div className="flex justify-between items-center text-xs pt-1.5 border-t border-[#0f0f0f]/10">
+                    <span className="text-[#5a585a] text-[10px]">Subtotal:</span>
+                    <span className="font-black text-[#0f0f0f] font-mono">{formatRupiah(item.subtotal)}</span>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="p-4 bg-slate-50 border-t border-slate-100 space-y-3">
+            <div className="p-4 bg-[#ecefec] border-t border-[#0f0f0f]/10 space-y-3">
               <div className="flex justify-between items-baseline">
-                <span className="text-xs font-bold text-slate-500 uppercase">TOTAL PEMBAYARAN:</span>
-                <span className="text-xl font-black text-emerald-600 font-mono">{formatRupiah(totalAmount)}</span>
+                <span className="text-xs font-bold text-[#5a585a] uppercase">TOTAL PEMBAYARAN:</span>
+                <span className="text-2xl font-black text-[#0f0f0f] font-mono">{formatRupiah(totalAmount)}</span>
               </div>
               <button
                 onClick={() => {
                   setShowCartDrawer(false);
                   setShowPaymentModal(true);
                 }}
-                className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-sm uppercase tracking-wider shadow-md shadow-emerald-500/20 flex items-center justify-center gap-1.5"
+                className="w-full ctrl-btn-lime flex items-center justify-center space-x-2"
               >
                 <Printer className="w-4 h-4" />
                 <span>Lanjut Pembayaran</span>
@@ -583,7 +562,7 @@ export default function KasirPOS() {
         </div>
       )}
 
-      {/* 7. PAYMENT MODAL */}
+      {/* 6. PAYMENT MODAL */}
       {showPaymentModal && (
         <PaymentModal
           totalAmount={totalAmount}
@@ -596,7 +575,7 @@ export default function KasirPOS() {
         />
       )}
 
-      {/* 8. RECEIPT NOTA PRINT MODAL */}
+      {/* 7. RECEIPT MODAL */}
       {completedInvoice && (
         <ReceiptModal
           invoice={completedInvoice}

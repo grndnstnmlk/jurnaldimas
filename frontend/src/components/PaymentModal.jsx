@@ -1,15 +1,11 @@
 import React, { useState } from 'react';
 import { 
   X, 
-  CheckCircle2, 
-  DollarSign, 
+  Banknote, 
   CreditCard, 
   Clock, 
   Printer, 
-  MessageCircle, 
-  ArrowRight,
-  Banknote,
-  Coins
+  ArrowRight
 } from 'lucide-react';
 import { formatRupiah } from '../utils/format';
 
@@ -54,47 +50,47 @@ export default function PaymentModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
-      <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+      <div className="w-full max-w-lg bg-[#ffffff] rounded-[26px] border border-[#0f0f0f] overflow-hidden flex flex-col max-h-[92vh] shadow-2xl">
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <div className="px-6 py-4 border-b border-[#0f0f0f]/10 flex items-center justify-between bg-[#ecefec]">
           <div className="flex items-center space-x-2.5">
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
-              <Banknote className="w-5 h-5" />
+            <div className="w-8 h-8 rounded-[9px] bg-[#0f0f0f] text-[#ffffff] flex items-center justify-center font-bold">
+              <Banknote className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-extrabold text-slate-900 text-base">Pembayaran & Cetak Nota</h3>
-              <p className="text-xs text-slate-500">
-                Pelanggan: <span className="text-emerald-700 font-bold">[{customerCode || '-'}] {customerName || 'Umum'}</span>
+              <h3 className="font-extrabold text-[#0f0f0f] text-base">Pembayaran Kasir</h3>
+              <p className="text-xs text-[#5a585a]">
+                Pelanggan: <span className="text-[#0f0f0f] font-bold">[{customerCode || '-'}] {customerName || 'Umum'}</span>
               </p>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition"
+            className="p-1.5 rounded-full text-[#0f0f0f] hover:bg-[#ffffff] transition"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <form onSubmit={handleFinalSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
+        <form onSubmit={handleFinalSubmit} className="p-6 space-y-4 overflow-y-auto flex-1 bg-[#f9faf9]">
           
-          {/* Total Tagihan Box */}
-          <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-100 text-center">
-            <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">TOTAL TAGIHAN BELANJA</span>
-            <div className="text-3xl sm:text-4xl font-black text-emerald-600 font-mono tracking-tight mt-0.5">
+          {/* Confetti Yellow Total Box */}
+          <div className="p-5 rounded-[17.5px] bg-[#fcea59] border border-[#0f0f0f] text-center">
+            <span className="text-xs font-bold text-[#0f0f0f] uppercase tracking-wider">TOTAL TAGIHAN BELANJA</span>
+            <div className="text-3xl sm:text-4xl font-black text-[#0f0f0f] font-mono tracking-tight mt-0.5">
               {formatRupiah(totalAmount)}
             </div>
-            <div className="text-xs text-slate-500 mt-1">
-              {itemCount} macam barang pesanan
+            <div className="text-xs text-[#5a585a] mt-1 font-medium">
+              {itemCount} macam produk pesanan
             </div>
           </div>
 
-          {/* Payment Method Selector */}
+          {/* Payment Method Pills */}
           <div>
-            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-bold text-[#0f0f0f] uppercase tracking-wider mb-2">
               Metode Pembayaran
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -110,10 +106,10 @@ export default function PaymentModal({
                     key={m.id}
                     type="button"
                     onClick={() => setPaymentMethod(m.id)}
-                    className={`py-3 px-2 rounded-2xl text-xs font-bold flex flex-col items-center gap-1.5 transition border ${
+                    className={`py-3 px-2 rounded-[17.5px] text-xs font-bold flex flex-col items-center gap-1.5 transition border ${
                       active 
-                        ? 'bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-500/20' 
-                        : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-slate-200'
+                        ? 'bg-[#0f0f0f] text-[#ffffff] border-[#0f0f0f]' 
+                        : 'bg-[#ffffff] text-[#0f0f0f] border-[#0f0f0f]/30 hover:border-[#0f0f0f]'
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -126,9 +122,9 @@ export default function PaymentModal({
 
           {/* Cash Payment Details */}
           {paymentMethod === 'TUNAI' && (
-            <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            <div className="space-y-3 bg-[#ffffff] p-4 rounded-[17.5px] border border-[#0f0f0f]/30">
               <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-bold text-[#0f0f0f] uppercase tracking-wider mb-1">
                   Uang Diterima (Rp)
                 </label>
                 <input
@@ -137,21 +133,21 @@ export default function PaymentModal({
                   autoFocus
                   value={cashReceived}
                   onChange={(e) => setCashReceived(Number(e.target.value))}
-                  className="w-full bg-white text-slate-900 px-4 py-2.5 rounded-xl border border-slate-200 font-mono text-xl font-bold focus:outline-none focus:border-emerald-500 shadow-xs"
+                  className="w-full bg-[#eeeeee] text-[#0f0f0f] px-4 py-2.5 rounded-[35px] border border-[#0f0f0f] font-mono text-xl font-bold focus:outline-none"
                 />
               </div>
 
-              {/* Quick Cash Buttons */}
+              {/* Quick Cash Options */}
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {quickCashOptions.map((opt, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => setCashReceived(opt.value)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition border ${
+                    className={`px-3 py-1.5 rounded-[35px] text-xs font-mono font-bold transition border ${
                       cashReceived === opt.value
-                        ? 'bg-emerald-500 text-white border-emerald-500'
-                        : 'bg-white text-slate-600 hover:bg-slate-100 border-slate-200'
+                        ? 'bg-[#05c92f] text-[#0f0f0f] border-[#0f0f0f]'
+                        : 'bg-[#ffffff] text-[#0f0f0f] hover:bg-[#ecefec] border-[#0f0f0f]/30'
                     }`}
                   >
                     {opt.label === 'Uang Pas' ? 'Uang Pas' : formatRupiah(opt.value)}
@@ -160,9 +156,9 @@ export default function PaymentModal({
               </div>
 
               {/* Kembalian Box */}
-              <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-500 uppercase">Uang Kembalian:</span>
-                <span className={`text-xl font-black font-mono ${changeAmount > 0 ? 'text-emerald-600' : 'text-slate-600'}`}>
+              <div className="pt-2 border-t border-[#0f0f0f]/10 flex items-center justify-between">
+                <span className="text-xs font-bold text-[#5a585a] uppercase">Uang Kembalian:</span>
+                <span className={`text-xl font-black font-mono ${changeAmount > 0 ? 'text-[#05c92f]' : 'text-[#0f0f0f]'}`}>
                   {formatRupiah(changeAmount)}
                 </span>
               </div>
@@ -175,18 +171,18 @@ export default function PaymentModal({
             </div>
           )}
 
-          {/* Tempo / Due date */}
+          {/* Tempo Section */}
           {paymentMethod === 'TEMPO' && (
-            <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            <div className="space-y-3 bg-[#ffffff] p-4 rounded-[17.5px] border border-[#0f0f0f]/30">
               <div>
-                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-bold text-[#0f0f0f] uppercase tracking-wider mb-1">
                   Jatuh Tempo Pembayaran
                 </label>
                 <input
                   type="date"
                   value={tempoDueDate}
                   onChange={(e) => setTempoDueDate(e.target.value)}
-                  className="w-full bg-white text-slate-900 px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-[#eeeeee] text-[#0f0f0f] px-3.5 py-2.5 rounded-[35px] border border-[#0f0f0f] text-xs focus:outline-none"
                 />
               </div>
             </div>
@@ -194,31 +190,31 @@ export default function PaymentModal({
 
           {/* Notes */}
           <div>
-            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
-              Catatan / Keterangan (Opsional)
+            <label className="block text-xs font-bold text-[#0f0f0f] uppercase tracking-wider mb-1">
+              Catatan Nota (Opsional)
             </label>
             <input
               type="text"
               value={paymentNotes}
               onChange={(e) => setPaymentNotes(e.target.value)}
               placeholder="Contoh: Titip toko / Sales Dimas"
-              className="w-full bg-white text-slate-900 px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
+              className="w-full bg-[#ffffff] text-[#0f0f0f] px-4 py-2.5 rounded-[35px] border border-[#0f0f0f] text-xs focus:outline-none"
             />
           </div>
 
           {/* Action Buttons */}
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+          <div className="pt-3 border-t border-[#0f0f0f]/10 flex items-center justify-end gap-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800"
+              className="px-4 py-2.5 rounded-[35px] text-xs font-bold text-[#5a585a] hover:text-[#0f0f0f]"
             >
               Batal
             </button>
             <button
               type="submit"
               disabled={isProcessing || isCashInsufficient}
-              className="px-6 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-sm uppercase tracking-wider shadow-lg shadow-emerald-500/25 flex items-center gap-2 transition active:scale-95 disabled:opacity-40"
+              className="ctrl-btn-lime flex items-center gap-2 disabled:opacity-40"
             >
               <Printer className="w-4 h-4" />
               <span>{isProcessing ? 'Memproses...' : 'Selesaikan Transaksi (F9)'}</span>

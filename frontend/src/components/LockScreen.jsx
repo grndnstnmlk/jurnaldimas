@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, KeyRound, ArrowRight, Delete, ShieldCheck } from 'lucide-react';
+import { Lock, ArrowRight, Delete } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function LockScreen() {
@@ -40,24 +40,31 @@ export default function LockScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 selection:bg-emerald-500 selection:text-white">
+    <div className="min-h-screen bg-[#f9faf9] flex flex-col items-center justify-center p-4 selection:bg-[#05c92f] selection:text-[#0f0f0f]">
       
-      <div className="w-full max-w-sm fintech-card bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-100 text-center space-y-6">
+      <div className="w-full max-w-sm bg-[#ffffff] rounded-[26px] p-6 sm:p-8 border border-[#0f0f0f] text-center space-y-6 shadow-2xl">
         
-        {/* Brand Icon */}
+        {/* Brand Icon & Chrome Dots */}
         <div className="flex flex-col items-center">
-          <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 mb-3 shadow-xs">
-            <Lock className="w-7 h-7" />
+          <div className="w-12 h-12 rounded-[14px] bg-[#0f0f0f] text-[#ffffff] flex items-center justify-center mb-3">
+            <Lock className="w-6 h-6" />
           </div>
-          <h1 className="font-extrabold text-lg sm:text-xl text-slate-900 tracking-tight">
+          
+          <div className="flex items-center space-x-1.5 mb-1">
+            <span className="w-2 h-2 rounded-full bg-[#05c92f]"></span>
+            <span className="w-2 h-2 rounded-full bg-[#fcea59]"></span>
+            <span className="w-2 h-2 rounded-full bg-[#ffd0e2]"></span>
+          </div>
+
+          <h1 className="font-extrabold text-xl text-[#0f0f0f] tracking-tight font-sans">
             MASTER CIGARETTES
           </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Sistem Kasir & POS — Masukkan Kode Akses
+          <p className="text-xs text-[#5a585a] mt-0.5">
+            Sistem Kasir Terpadu — Masukkan Kode Akses
           </p>
         </div>
 
-        {/* PIN / Password Input */}
+        {/* PIN Input */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="relative">
             <input
@@ -70,12 +77,12 @@ export default function LockScreen() {
                 setError('');
               }}
               placeholder="Masukkan Kode Akses PIN"
-              className="w-full bg-slate-50 text-center tracking-[0.3em] font-mono text-xl text-emerald-600 py-3.5 px-4 rounded-2xl border border-slate-200 focus:outline-none focus:border-emerald-500 shadow-inner placeholder:tracking-normal placeholder:text-xs placeholder:font-sans placeholder:text-slate-400"
+              className="w-full bg-[#eeeeee] text-center tracking-[0.3em] font-mono text-xl text-[#0f0f0f] py-3.5 px-4 rounded-[35px] border border-[#0f0f0f] focus:outline-none placeholder:tracking-normal placeholder:text-xs placeholder:font-sans placeholder:text-[#5a585a]"
             />
           </div>
 
           {error && (
-            <div className="text-xs text-rose-600 bg-rose-50 py-2 px-3 rounded-xl border border-rose-100 font-bold">
+            <div className="text-xs text-[#0f0f0f] bg-[#ffd0e2] py-2 px-3 rounded-[14px] border border-[#0f0f0f] font-bold">
               {error}
             </div>
           )}
@@ -84,22 +91,22 @@ export default function LockScreen() {
           <button
             type="submit"
             disabled={isSubmitting || !code}
-            className="w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm uppercase tracking-wider shadow-md shadow-emerald-500/20 flex items-center justify-center space-x-2 transition active:scale-98 disabled:opacity-40"
+            className="w-full ctrl-btn-lime flex items-center justify-center space-x-2 disabled:opacity-40"
           >
             <span>{isSubmitting ? 'Memverifikasi...' : 'Buka Aplikasi'}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
 
-        {/* Numeric Keypad for Touch */}
-        <div className="pt-2 border-t border-slate-100">
+        {/* Numeric Keypad */}
+        <div className="pt-2 border-t border-[#0f0f0f]/10">
           <div className="grid grid-cols-3 gap-2">
             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
               <button
                 key={num}
                 type="button"
                 onClick={() => handleKeypadPress(num.toString())}
-                className="py-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 font-mono text-lg font-extrabold border border-slate-100 active:scale-95 transition"
+                className="py-3 rounded-[35px] bg-[#ecefec] hover:bg-[#ffffff] text-[#0f0f0f] font-mono text-lg font-bold border border-[#0f0f0f]/20 active:scale-95 transition"
               >
                 {num}
               </button>
@@ -107,34 +114,31 @@ export default function LockScreen() {
             <button
               type="button"
               onClick={handleClear}
-              className="py-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-400 font-bold text-xs border border-slate-100 active:scale-95 transition uppercase"
+              className="py-3 rounded-[35px] bg-[#ecefec] hover:bg-[#ffffff] text-[#5a585a] font-bold text-xs border border-[#0f0f0f]/20 active:scale-95 transition uppercase"
             >
               C
             </button>
             <button
               type="button"
               onClick={() => handleKeypadPress('0')}
-              className="py-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 font-mono text-lg font-extrabold border border-slate-100 active:scale-95 transition"
+              className="py-3 rounded-[35px] bg-[#ecefec] hover:bg-[#ffffff] text-[#0f0f0f] font-mono text-lg font-bold border border-[#0f0f0f]/20 active:scale-95 transition"
             >
               0
             </button>
             <button
               type="button"
               onClick={handleDeleteDigit}
-              className="py-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-rose-500 flex items-center justify-center border border-slate-100 active:scale-95 transition"
+              className="py-3 rounded-[35px] bg-[#ecefec] hover:bg-[#ffd0e2] text-[#0f0f0f] flex items-center justify-center border border-[#0f0f0f]/20 active:scale-95 transition"
             >
               <Delete className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* Default PIN Hint */}
-        <div className="text-[11px] text-slate-500 pt-1">
+        {/* Default PIN Note */}
+        <div className="text-[11px] text-[#5a585a] pt-1">
           <span>Kode Akses Default: </span>
-          <span className="font-mono font-bold text-slate-700">123456</span>
-          <p className="text-[10px] text-slate-400 mt-0.5">
-            (Dapat diubah kapan saja di menu PIN)
-          </p>
+          <span className="font-mono font-bold text-[#0f0f0f]">123456</span>
         </div>
 
       </div>

@@ -6,15 +6,11 @@ import {
   TrendingUp, 
   TableProperties, 
   Database, 
-  Download, 
-  Smartphone,
-  Lock,
-  KeyRound,
+  Lock, 
+  KeyRound, 
   ChevronLeft,
   SlidersHorizontal,
-  Wifi,
-  WifiOff,
-  LayoutDashboard
+  CircleDot
 } from 'lucide-react';
 import { useRealtime } from '../context/RealtimeContext';
 import { useAuth } from '../context/AuthContext';
@@ -23,30 +19,10 @@ import ChangePinModal from './ChangePinModal';
 export default function Navbar({ activeTab, setActiveTab }) {
   const { isConnected } = useRealtime();
   const { logout } = useAuth();
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showChangePin, setShowChangePin] = useState(false);
 
-  useEffect(() => {
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    });
-  }, []);
-
-  const handleInstallPWA = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setDeferredPrompt(null);
-      }
-    } else {
-      alert('Untuk memasang di HP: Buka menu peramban Chrome/Safari lalu pilih "Tambahkan ke Layar Utama" (Add to Home Screen)');
-    }
-  };
-
   const tabs = [
-    { id: 'kasir', label: 'Kasir & Nota', icon: ShoppingCart },
+    { id: 'kasir', label: 'Kasir & POS', icon: ShoppingCart },
     { id: 'riwayat', label: 'Riwayat Nota', icon: Receipt },
     { id: 'stock', label: 'Stock Opname', icon: Boxes },
     { id: 'labarugi', label: 'Laba - Rugi', icon: TrendingUp },
@@ -55,69 +31,94 @@ export default function Navbar({ activeTab, setActiveTab }) {
   ];
 
   return (
-    <header className="sticky top-0 z-40 bg-white border-b border-slate-200/80 shadow-xs">
+    <header className="sticky top-0 z-40 bg-[#f9faf9] border-b border-[#0f0f0f]/10 backdrop-blur-md">
       
       {/* Top Bar Header */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6">
-        <div className="flex items-center justify-between h-14 sm:h-16">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-3">
+        <div className="flex items-center justify-between gap-3">
           
-          {/* Left: Back / Brand Logo */}
-          <div className="flex items-center space-x-2">
-            <button 
-              onClick={() => setActiveTab('kasir')}
-              className="p-1.5 -ml-1.5 rounded-full hover:bg-slate-100 text-slate-700 transition"
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </button>
-            <div 
-              onClick={() => setActiveTab('kasir')}
-              className="cursor-pointer flex items-center space-x-2"
-            >
-              <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white font-black text-xs flex items-center justify-center shadow-xs">
-                MC
-              </div>
-              <span className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight">
+          {/* Logo with Chrome Dots Signature */}
+          <div 
+            onClick={() => setActiveTab('kasir')}
+            className="cursor-pointer flex items-center space-x-2.5 select-none"
+          >
+            <div className="w-8 h-8 rounded-[9px] bg-[#0f0f0f] text-white font-black text-xs flex items-center justify-center border border-[#0f0f0f]">
+              MC
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="font-extrabold text-base sm:text-lg text-[#0f0f0f] tracking-tight font-sans">
                 MASTER CIGARETTES
               </span>
+              {/* Chrome Dots Icon */}
+              <div className="hidden sm:flex items-center space-x-1">
+                <span className="w-2 h-2 rounded-full bg-[#05c92f]"></span>
+                <span className="w-2 h-2 rounded-full bg-[#fcea59]"></span>
+                <span className="w-2 h-2 rounded-full bg-[#ffd0e2]"></span>
+              </div>
             </div>
           </div>
 
-          {/* Right Actions: Atur Harga / PIN / Lock */}
-          <div className="flex items-center space-x-2 sm:space-x-3">
+          {/* Centered Ghost Nav Pill (Bone-colored rounded container ~9px radius) */}
+          <nav className="hidden lg:flex items-center bg-[#ecefec] p-1 rounded-[9px] border border-[#0f0f0f]/15">
+            {tabs.map((tab, idx) => {
+              const isActive = activeTab === tab.id;
+              const Icon = tab.icon;
+              return (
+                <React.Fragment key={tab.id}>
+                  {idx > 0 && <span className="w-[1px] h-3.5 bg-[#0f0f0f]/20 my-auto"></span>}
+                  <button
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`px-3 py-1.5 rounded-[7px] text-xs font-semibold flex items-center space-x-1.5 transition ${
+                      isActive 
+                        ? 'bg-[#0f0f0f] text-[#ffffff] font-bold shadow-xs' 
+                        : 'text-[#0f0f0f] hover:bg-[#ffffff]/60'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{tab.label}</span>
+                  </button>
+                </React.Fragment>
+              );
+            })}
+          </nav>
+
+          {/* Right Action Buttons */}
+          <div className="flex items-center space-x-2">
             
-            {/* Live Indicator */}
+            {/* Live Indicator Pill */}
             <div 
-              title={isConnected ? 'Terkoneksi Real-time' : 'Menghubungkan...'}
-              className="hidden sm:flex items-center space-x-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200"
+              title={isConnected ? 'Real-time Server Active' : 'Connecting...'}
+              className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-[35px] bg-[#ffffff] border border-[#0f0f0f] text-[11px] font-bold text-[#0f0f0f]"
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>LIVE</span>
+              <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-[#05c92f]' : 'bg-[#ffd0e2] animate-pulse'}`}></span>
+              <span>{isConnected ? 'LIVE' : 'OFFLINE'}</span>
             </div>
 
-            {/* Atur Harga Shortcut */}
+            {/* Atur Harga / Matriks Shortcut Pill */}
             <button
               onClick={() => setActiveTab('matriks')}
-              className="text-xs sm:text-sm font-bold text-emerald-600 hover:text-emerald-700 hover:underline px-2 py-1 transition"
+              className="hidden sm:inline-flex items-center px-4 py-1.5 rounded-[35px] bg-[#fcea59] text-[#0f0f0f] text-xs font-bold border border-[#0f0f0f] hover:bg-[#fbd938] transition active:scale-95"
             >
               Atur Harga
             </button>
 
-            {/* Change PIN */}
+            {/* Change PIN Button */}
             <button
               onClick={() => setShowChangePin(true)}
-              className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition"
+              className="p-2 rounded-[35px] bg-[#ffffff] text-[#0f0f0f] border border-[#0f0f0f] hover:bg-[#ecefec] transition"
               title="Ganti Kode Akses / PIN"
             >
-              <KeyRound className="w-4 h-4 text-slate-600" />
+              <KeyRound className="w-3.5 h-3.5" />
             </button>
 
-            {/* Lock / Logout */}
+            {/* Black Download / Lock Button */}
             <button
               onClick={logout}
-              className="p-2 rounded-xl text-slate-600 hover:bg-rose-50 hover:text-rose-600 transition"
+              className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-[35px] bg-[#0f0f0f] hover:bg-[#000000] text-[#ffffff] text-xs font-bold border border-[#0f0f0f] transition active:scale-95"
               title="Kunci Aplikasi"
             >
-              <Lock className="w-4 h-4" />
+              <Lock className="w-3.5 h-3.5" />
+              <span>Kunci</span>
             </button>
 
           </div>
@@ -125,33 +126,27 @@ export default function Navbar({ activeTab, setActiveTab }) {
         </div>
       </div>
 
-      {/* Segmented Top Tabs with Green Underline Active Indicator */}
-      <div className="bg-white border-t border-slate-100">
-        <div className="max-w-5xl mx-auto px-4 overflow-x-auto no-scrollbar">
-          <div className="flex space-x-6 sm:space-x-8 min-w-max">
-            {tabs.map((tab) => {
-              const isActive = activeTab === tab.id;
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`py-3 text-xs sm:text-sm font-bold flex items-center space-x-1.5 relative transition-colors ${
-                    isActive 
-                      ? 'text-slate-900 font-extrabold' 
-                      : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-500' : 'text-slate-400'}`} />
-                  <span>{tab.label}</span>
-                  {/* Green active underline */}
-                  {isActive && (
-                    <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-emerald-500 rounded-t-md" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
+      {/* Mobile Sub-Nav Row */}
+      <div className="lg:hidden bg-[#ecefec] border-t border-[#0f0f0f]/10 overflow-x-auto no-scrollbar py-1.5 px-3">
+        <div className="flex space-x-1.5 min-w-max">
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.id;
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-3 py-1.5 rounded-[9px] text-xs font-semibold flex items-center space-x-1.5 transition ${
+                  isActive 
+                    ? 'bg-[#0f0f0f] text-[#ffffff] font-bold' 
+                    : 'text-[#0f0f0f] hover:bg-[#ffffff]/60'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
