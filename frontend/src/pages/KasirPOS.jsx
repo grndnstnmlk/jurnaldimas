@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Search, 
   User, 
@@ -17,12 +17,20 @@ import {
   Building2,
   TrendingUp,
   Receipt,
-  FileText
+  FileText,
+  CreditCard,
+  Banknote,
+  Flame,
+  LayoutGrid,
+  List,
+  SlidersHorizontal,
+  RefreshCw
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { formatRupiah } from '../utils/format';
 import { useRealtime } from '../context/RealtimeContext';
 import ReceiptModal from '../components/ReceiptModal';
+import PaymentModal from '../components/PaymentModal';
 
 export default function KasirPOS() {
   const { eventCounter } = useRealtime();
@@ -32,19 +40,39 @@ export default function KasirPOS() {
 
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]);
-  const [notes, setNotes] = useState('');
-
   const [searchProduct, setSearchProduct] = useState('');
-  const [activeBrandFilter, setActiveBrandFilter] = useState('ALL');
+  const [activeCategory, setActiveCategory] = useState('ALL');
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
 
   const [cart, setCart] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [completedInvoice, setCompletedInvoice] = useState(null);
 
-  // Load Customers, Products & Matrix
+  const searchInputRef = useRef(null);
+
+  // Load Data
   useEffect(() => {
     fetchData();
   }, [eventCounter]);
+
+  // Keyboard Shortcuts (F2: Search, F9: Pay, Esc: Clear)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'F2') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      } else if (e.key === 'F9' || (e.ctrlKey && e.key === 'Enter')) {
+        e.preventDefault();
+        if (cart.length > 0) setShowPaymentModal(true);
+      } else if (e.key === 'Escape') {
+        setShowPaymentModal(false);
+        setCompletedInvoice(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [cart]);
 
   const fetchData = async () => {
     try {
@@ -65,17 +93,16 @@ export default function KasirPOS() {
     }
   };
 
-  // Brand quick filter categories based on 120 cigarette brands
-  const brandFilters = [
-    { id: 'ALL', label: 'Semua Produk' },
-    { id: 'ESTE', label: 'ESTE / ESSE' },
-    { id: 'ANG', label: 'ANG Series' },
-    { id: 'SURYA', label: 'Surya / 54RYA' },
-    { id: 'BALVER', label: 'BALVER' },
-    { id: 'AVATAR', label: 'AVATAR' },
-    { id: 'HM', label: 'HM / HMIN' },
-    { id: 'MD', label: 'MD 16' },
-    { id: 'LUXIO', label: 'LUXIO' }
+  // Categories tailored for Cigarette Distribution
+  const categories = [
+    { id: 'ALL', label: 'Semua Produk', count: products.length },
+    { id: 'ESTE', label: 'ESTE / ESSE Series', icon: Flame },
+    { id: 'SURYA', label: 'Surya & 54RYA', icon: Tag },
+    { id: 'ANG', label: 'ANG Series', icon: Package },
+    { id: 'BALVER', label: 'BALVER', icon: Layers },
+    { id: 'AVATAR', label: 'AVATAR', icon: Sparkles },
+    { id: 'MD', label: 'MD 16', icon: Tag },
+    { id: 'HM', label: 'HM & HMIN', icon: Package }
   ];
 
   // Helper to get unit price for selected customer
@@ -155,12 +182,10 @@ export default function KasirPOS() {
     );
   };
 
-  // Quick Wholesale Quantity Increments (+5, +10, +20, +50 slop)
   const addWholesaleQty = (productId, amount) => {
     updateQty(productId, amount);
   };
 
-  // Update custom unit price directly in cart
   const updateItemPrice = (productId, newPrice) => {
     const val = Number(newPrice) || 0;
     setCart((prevCart) =>
@@ -180,7 +205,7 @@ export default function KasirPOS() {
     setCart([]);
   };
 
-  // Calculations
+  // Calculate totals
   const totalAmount = cart.reduce((acc, item) => acc + item.subtotal, 0);
   const totalItemsCount = cart.reduce((acc, item) => acc + item.qty, 0);
   const totalEstimatedProfit = cart.reduce(
@@ -188,18 +213,16 @@ export default function KasirPOS() {
     0
   );
 
-  // Submit Checkout
-  const handleCheckout = async () => {
-    if (cart.length === 0) return;
+  // Submit and Complete Transaction
+  const handleConfirmPayment = async (paymentData) => {
     setIsSubmitting(true);
-
     try {
       const selectedCust = customers.find((c) => c.id === Number(selectedCustomerId));
       const payload = {
         date: txDate,
         customer_id: selectedCust ? selectedCust.id : null,
         customer_name_manual: selectedCust ? selectedCust.name : 'Umum',
-        notes,
+        notes: paymentData.notes || `Metode: ${paymentData.paymentMethod}`,
         items: cart
       };
 
@@ -212,15 +235,15 @@ export default function KasirPOS() {
       const data = await res.json();
       if (data.success) {
         try {
-          confetti({ particleCount: 60, spread: 50, origin: { y: 0.75 } });
+          confetti({ particleCount: 70, spread: 60, origin: { y: 0.7 } });
         } catch (e) {}
 
         const invRes = await fetch(`/api/invoices/${data.id}`).then((r) => r.json());
         setCompletedInvoice(invRes);
+        setShowPaymentModal(false);
         setCart([]);
-        setNotes('');
       } else {
-        alert('Gagal membuat transaksi: ' + (data.error || 'Terjadi kesalahan'));
+        alert('Gagal menyimpan transaksi: ' + (data.error || 'Terjadi kesalahan'));
       }
     } catch (err) {
       alert('Koneksi gagal: ' + err.message);
@@ -229,47 +252,50 @@ export default function KasirPOS() {
     }
   };
 
-  // Filter products by search and brand chip
+  // Filter products
   const filteredProducts = products.filter((p) => {
     const matchSearch = p.name.toLowerCase().includes(searchProduct.toLowerCase());
-    let matchBrand = true;
-    if (activeBrandFilter !== 'ALL') {
-      matchBrand = p.name.toUpperCase().includes(activeBrandFilter);
+    let matchCat = true;
+    if (activeCategory !== 'ALL') {
+      matchCat = p.name.toUpperCase().includes(activeCategory);
     }
-    return matchSearch && matchBrand;
+    return matchSearch && matchCat;
   });
 
   const selectedCustomerObj = customers.find((c) => c.id === Number(selectedCustomerId));
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4">
       
-      {/* Executive Customer & Transaction Header Bar */}
-      <div className="b2b-card rounded-2xl p-4 sm:p-5 mb-5 border-l-4 border-l-amber-500">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+      {/* Top Floating POS Context Bar */}
+      <div className="b2b-card rounded-2xl p-3.5 sm:p-4 mb-4 border-l-4 border-l-amber-500">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
           
           {/* Customer Selection (6 cols) */}
           <div className="md:col-span-5">
-            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-              <Building2 className="w-3.5 h-3.5 text-amber-400" />
-              <span>Pelanggan / Toko Penerima</span>
-            </label>
-            <div className="relative">
-              <select
-                value={selectedCustomerId}
-                onChange={(e) => handleCustomerChange(e.target.value)}
-                className="w-full bg-slate-900 text-white pl-3.5 pr-8 py-2.5 rounded-xl border border-slate-700/80 focus:outline-none focus:border-amber-500 font-bold text-sm cursor-pointer shadow-inner"
-              >
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    [{c.code}] {c.name} {c.phone ? `(${c.phone})` : ''}
-                  </option>
-                ))}
-              </select>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5 text-amber-400" />
+                <span>Pilih Pelanggan / Toko</span>
+              </label>
+              <span className="text-[10px] text-amber-400 font-bold">
+                {selectedCustomerObj ? `Kode: ${selectedCustomerObj.code}` : ''}
+              </span>
             </div>
+            <select
+              value={selectedCustomerId}
+              onChange={(e) => handleCustomerChange(e.target.value)}
+              className="w-full bg-slate-900 text-white pl-3 pr-8 py-2 rounded-xl border border-slate-700 focus:outline-none focus:border-amber-500 font-bold text-xs sm:text-sm cursor-pointer shadow-inner"
+            >
+              {customers.map((c) => (
+                <option key={c.id} value={c.id}>
+                  [{c.code}] {c.name}
+                </option>
+              ))}
+            </select>
           </div>
 
-          {/* Date Selector (3 cols) */}
+          {/* Date Picker (3 cols) */}
           <div className="md:col-span-3">
             <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-slate-400" />
@@ -279,21 +305,25 @@ export default function KasirPOS() {
               type="date"
               value={txDate}
               onChange={(e) => setTxDate(e.target.value)}
-              className="w-full bg-slate-900 text-white px-3.5 py-2.5 rounded-xl border border-slate-700/80 focus:outline-none focus:border-amber-500 text-xs sm:text-sm font-semibold shadow-inner"
+              className="w-full bg-slate-900 text-white px-3 py-2 rounded-xl border border-slate-700 focus:outline-none focus:border-amber-500 text-xs sm:text-sm font-semibold shadow-inner"
             />
           </div>
 
-          {/* Customer Pricing Tier Status (4 cols) */}
-          <div className="md:col-span-4 bg-slate-950/70 p-3 rounded-xl border border-slate-800 flex items-center justify-between">
-            <div>
-              <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Tier Harga Aktif</div>
-              <div className="text-sm font-extrabold text-amber-400">
-                {selectedCustomerObj ? `[${selectedCustomerObj.code}] ${selectedCustomerObj.name}` : '-'}
+          {/* POS Status and Shortcut Guide (4 cols) */}
+          <div className="md:col-span-4 bg-slate-950/70 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between">
+            <div className="text-left">
+              <div className="text-[10px] text-slate-400 uppercase font-semibold">Status Terminal</div>
+              <div className="text-xs font-black text-emerald-400 flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>Kasir Siap Transaksi</span>
               </div>
             </div>
-            <div className="text-right">
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                Otomatis Excel Matrix
+            <div className="flex items-center gap-1.5">
+              <span className="px-2 py-1 rounded text-[10px] font-mono font-bold bg-slate-900 text-slate-300 border border-slate-800" title="Shortcut Cari">
+                F2 Cari
+              </span>
+              <span className="px-2 py-1 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40" title="Shortcut Bayar">
+                F9 Bayar
               </span>
             </div>
           </div>
@@ -301,215 +331,269 @@ export default function KasirPOS() {
         </div>
       </div>
 
-      {/* Main Screen: Product Selection (Left) & Sales Order Slip (Right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+      {/* POS Workspace: Products Catalog (Left) & Live Register Stream (Right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
         
-        {/* LEFT COLUMN: Catalog & Brand Filter (7 cols) */}
-        <div className="lg:col-span-7 xl:col-span-8 space-y-3.5">
+        {/* LEFT: Product Catalog (7 cols) */}
+        <div className="lg:col-span-7 xl:col-span-8 space-y-3">
           
-          {/* Search Input */}
-          <div className="relative">
-            <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Ketik nama produk rokok (e.g. ESTE, 54RYA, SURYA, BALVER, MD 16...)"
-              value={searchProduct}
-              onChange={(e) => setSearchProduct(e.target.value)}
-              className="w-full bg-slate-900 text-white pl-10 pr-20 py-2.5 rounded-xl border border-slate-800 focus:outline-none focus:border-amber-500 text-xs sm:text-sm font-medium shadow-inner"
-            />
-            {searchProduct && (
-              <button 
-                onClick={() => setSearchProduct('')}
-                className="absolute right-2.5 top-2 text-[10px] uppercase font-bold text-slate-400 hover:text-white px-2 py-1 bg-slate-800 rounded-md"
+          {/* Search Bar & View Mode Switcher */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Cari rokok (tekan F2 / ketik nama e.g. ESTE, SURYA, BALVER, MD...)"
+                value={searchProduct}
+                onChange={(e) => setSearchProduct(e.target.value)}
+                className="w-full bg-slate-900 text-white pl-10 pr-20 py-2.5 rounded-xl border border-slate-800 focus:outline-none focus:border-amber-500 text-xs sm:text-sm font-medium shadow-inner"
+              />
+              {searchProduct && (
+                <button 
+                  onClick={() => setSearchProduct('')}
+                  className="absolute right-2.5 top-2 text-[10px] uppercase font-bold text-slate-400 hover:text-white px-2 py-1 bg-slate-800 rounded-md"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+
+            {/* View Mode Toggle */}
+            <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-lg transition ${viewMode === 'grid' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}
+                title="Tampilan Grid"
               >
-                Reset
+                <LayoutGrid className="w-4 h-4" />
               </button>
-            )}
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded-lg transition ${viewMode === 'list' ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'}`}
+                title="Tampilan Tabel Cepat"
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
-          {/* Brand Filter Pills */}
+          {/* Category Filter Chips */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-            {brandFilters.map((b) => (
+            {categories.map((cat) => (
               <button
-                key={b.id}
-                onClick={() => setActiveBrandFilter(b.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
-                  activeBrandFilter === b.id
-                    ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
-                    : 'bg-slate-900/80 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800/80'
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition border ${
+                  activeCategory === cat.id
+                    ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-md shadow-amber-500/20'
+                    : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border-slate-800 hover:bg-slate-800/80'
                 }`}
               >
-                {b.label}
+                {cat.label}
               </button>
             ))}
           </div>
 
-          {/* Product Cards Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[580px] overflow-y-auto pr-1">
-            {filteredProducts.map((p) => {
-              const customerPrice = getProductPriceForCustomer(p.id, selectedCustomerId);
-              const inCartItem = cart.find((i) => i.product_id === p.id);
-              const isLowStock = (p.stok_akhir || 0) <= 5;
-              const unitProfit = customerPrice - (p.modal_price || 0);
+          {/* GRID VIEW */}
+          {viewMode === 'grid' && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[560px] overflow-y-auto pr-1">
+              {filteredProducts.map((p) => {
+                const customerPrice = getProductPriceForCustomer(p.id, selectedCustomerId);
+                const inCartItem = cart.find((i) => i.product_id === p.id);
+                const isLowStock = (p.stok_akhir || 0) <= 5;
 
-              return (
-                <div
-                  key={p.id}
-                  onClick={() => addToCart(p, 1)}
-                  className={`group relative p-3 rounded-xl border transition-all cursor-pointer select-none flex flex-col justify-between ${
-                    inCartItem
-                      ? 'bg-amber-500/10 border-amber-500/40 shadow-sm'
-                      : 'bg-slate-900/90 hover:bg-slate-800/90 border-slate-800/80 hover:border-slate-700'
-                  }`}
-                >
-                  {/* Cart count badge */}
-                  {inCartItem && (
-                    <span className="absolute top-2 right-2 px-2 py-0.5 rounded text-[10px] font-black bg-amber-500 text-slate-950">
-                      {inCartItem.qty} slop
-                    </span>
-                  )}
-
-                  <div>
-                    <div className="font-bold text-xs sm:text-sm text-slate-100 group-hover:text-amber-400 transition leading-snug line-clamp-2">
-                      {p.name}
-                    </div>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                        isLowStock ? 'bg-rose-500/15 text-rose-300' : 'bg-slate-800 text-slate-400'
-                      }`}>
-                        Sisa: {p.stok_akhir ?? 0}
+                return (
+                  <div
+                    key={p.id}
+                    onClick={() => addToCart(p, 1)}
+                    className={`group relative p-3 rounded-2xl border transition-all duration-200 cursor-pointer select-none flex flex-col justify-between ${
+                      inCartItem
+                        ? 'bg-amber-500/10 border-amber-500/50 shadow-md shadow-amber-500/10'
+                        : 'bg-slate-900/90 hover:bg-slate-850 border-slate-800/90 hover:border-slate-700 active:scale-98'
+                    }`}
+                  >
+                    {/* In Cart Pill Badge */}
+                    {inCartItem && (
+                      <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-slate-950 shadow">
+                        {inCartItem.qty}x
                       </span>
-                      {p.modal_price > 0 && (
-                        <span className="text-[9px] text-slate-500">
-                          HPP: {(p.modal_price / 1000).toLocaleString()}k
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                    )}
 
-                  <div className="mt-2.5 pt-2 border-t border-slate-800/60 flex items-center justify-between">
                     <div>
-                      <div className="text-[9px] text-slate-400 uppercase font-semibold">Harga Jual</div>
-                      <div className="text-xs sm:text-sm font-black text-emerald-400 font-mono">
-                        {formatRupiah(customerPrice)}
+                      <div className="font-bold text-xs sm:text-sm text-slate-100 group-hover:text-amber-400 transition leading-snug line-clamp-2">
+                        {p.name}
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                          isLowStock ? 'bg-rose-500/20 text-rose-300' : 'bg-slate-800 text-slate-400'
+                        }`}>
+                          Stok: {p.stok_akhir ?? 0}
+                        </span>
                       </div>
                     </div>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        addToCart(p, 1);
-                      }}
-                      className="p-1 rounded-lg bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 transition"
-                      title="Tambah ke nota"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
 
-            {filteredProducts.length === 0 && (
-              <div className="col-span-full py-12 text-center text-slate-500">
-                <Package className="w-10 h-10 mx-auto mb-2 opacity-30 text-amber-400" />
-                <p className="text-xs">Tidak ada produk rokok yang sesuai dengan filter.</p>
-              </div>
-            )}
-          </div>
+                    <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between">
+                      <div>
+                        <div className="text-[9px] text-slate-400 uppercase font-semibold">Harga Khusus</div>
+                        <div className="text-xs sm:text-sm font-black text-emerald-400 font-mono">
+                          {formatRupiah(customerPrice)}
+                        </div>
+                      </div>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addToCart(p, 1);
+                        }}
+                        className="p-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 transition"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* LIST VIEW (High-Speed Table) */}
+          {viewMode === 'list' && (
+            <div className="b2b-card rounded-2xl overflow-hidden border border-slate-800 max-h-[560px] overflow-y-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-950 sticky top-0 z-10 border-b border-slate-800 text-slate-400 font-bold uppercase">
+                  <tr>
+                    <th className="px-3 py-2.5">Nama Produk</th>
+                    <th className="px-3 py-2.5 text-center">Stok</th>
+                    <th className="px-3 py-2.5 text-right">Harga Pelanggan</th>
+                    <th className="px-3 py-2.5 text-center">Tambah</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/80 font-mono">
+                  {filteredProducts.map((p) => {
+                    const price = getProductPriceForCustomer(p.id, selectedCustomerId);
+                    const inCart = cart.find((i) => i.product_id === p.id);
+                    return (
+                      <tr 
+                        key={p.id} 
+                        onClick={() => addToCart(p, 1)}
+                        className="hover:bg-slate-800/50 cursor-pointer transition"
+                      >
+                        <td className="px-3 py-2 font-sans font-bold text-slate-200">
+                          {p.name}
+                          {inCart && <span className="ml-2 px-1.5 py-0.5 rounded bg-amber-500 text-slate-950 font-mono text-[10px] font-bold">{inCart.qty}x</span>}
+                        </td>
+                        <td className="px-3 py-2 text-center text-slate-400">{p.stok_akhir ?? 0}</td>
+                        <td className="px-3 py-2 text-right font-bold text-emerald-400">{formatRupiah(price)}</td>
+                        <td className="px-3 py-2 text-center">
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); addToCart(p, 1); }}
+                            className="px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-bold text-xs"
+                          >
+                            +
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
         </div>
 
-        {/* RIGHT COLUMN: Wholesale Sales Order Slip (5 cols) */}
-        <div className="lg:col-span-5 xl:col-span-4 b2b-card rounded-2xl flex flex-col h-[680px] shadow-2xl">
+        {/* RIGHT: Live Cash Register Slip (5 cols) */}
+        <div className="lg:col-span-5 xl:col-span-4 b2b-card rounded-3xl flex flex-col h-[670px] shadow-2xl border border-slate-800 overflow-hidden">
           
           {/* Slip Header */}
-          <div className="p-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/40">
+          <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/70">
             <div className="flex items-center space-x-2">
               <Receipt className="w-4 h-4 text-amber-400" />
-              <h3 className="font-extrabold text-white text-sm">Nota Belanja Grosir</h3>
+              <h3 className="font-black text-white text-sm">Register Struk Kasir</h3>
             </div>
             <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500 text-slate-950">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-500 text-slate-950">
                 {totalItemsCount} Slop
               </span>
               {cart.length > 0 && (
                 <button
                   onClick={clearCart}
-                  className="text-[11px] text-rose-400 hover:text-rose-300 font-medium ml-1"
+                  className="text-xs text-rose-400 hover:text-rose-300 font-semibold ml-1"
                 >
-                  Batal
+                  Kosongkan
                 </button>
               )}
             </div>
           </div>
 
-          {/* Cart Items List */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
+          {/* Ticket Stream / Items List */}
+          <div className="flex-1 overflow-y-auto p-3.5 space-y-2.5">
             {cart.map((item) => (
               <div
                 key={item.product_id}
-                className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-2.5 space-y-1.5"
+                className="bg-slate-950/70 border border-slate-800/90 rounded-2xl p-3 space-y-2"
               >
                 <div className="flex items-start justify-between">
-                  <div className="font-bold text-xs text-slate-200 leading-snug">
+                  <div className="font-bold text-xs sm:text-sm text-slate-200 leading-snug">
                     {item.name}
                   </div>
                   <button
                     onClick={() => removeFromCart(item.product_id)}
                     className="text-slate-500 hover:text-rose-400 p-0.5 ml-2"
                   >
-                    <Trash2 className="w-3 h-3" />
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
-                {/* Price and Quantity Stepper */}
-                <div className="flex items-center justify-between text-xs pt-0.5">
+                {/* Price and Stepper */}
+                <div className="flex items-center justify-between text-xs">
                   <div className="text-[11px] text-slate-400 flex items-center gap-1 font-mono">
                     <span>@</span>
                     <input
                       type="number"
                       value={item.unit_price}
                       onChange={(e) => updateItemPrice(item.product_id, e.target.value)}
-                      className="w-20 bg-slate-900 border border-slate-700 px-1 py-0.5 rounded text-slate-100 text-xs font-semibold focus:outline-none focus:border-amber-500"
+                      className="w-20 bg-slate-900 border border-slate-700 px-1.5 py-0.5 rounded text-slate-100 text-xs font-semibold focus:outline-none focus:border-amber-500"
                     />
                   </div>
 
-                  <div className="flex items-center space-x-1 bg-slate-900 border border-slate-700 rounded-lg p-0.5">
+                  <div className="flex items-center space-x-1 bg-slate-900 border border-slate-700 rounded-xl p-0.5">
                     <button
                       onClick={() => updateQty(item.product_id, -1)}
                       className="p-1 rounded text-slate-400 hover:text-white"
                     >
-                      <Minus className="w-3 h-3" />
+                      <Minus className="w-3.5 h-3.5" />
                     </button>
-                    <span className="w-7 text-center font-bold text-xs text-amber-400 font-mono">
+                    <span className="w-7 text-center font-black text-xs text-amber-400 font-mono">
                       {item.qty}
                     </span>
                     <button
                       onClick={() => updateQty(item.product_id, 1)}
                       className="p-1 rounded text-slate-400 hover:text-white"
                     >
-                      <Plus className="w-3 h-3" />
+                      <Plus className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
 
-                {/* Wholesale Quick Buttons (+5, +10, +25, +50 slop) */}
-                <div className="flex items-center gap-1 pt-1">
-                  <span className="text-[9px] text-slate-500 font-semibold uppercase">Grosir:</span>
+                {/* Wholesale Quick Buttons */}
+                <div className="flex items-center gap-1 pt-0.5">
+                  <span className="text-[9px] text-slate-500 font-bold uppercase">Grosir:</span>
                   {[5, 10, 20, 50].map((amt) => (
                     <button
                       key={amt}
                       onClick={() => addWholesaleQty(item.product_id, amt)}
-                      className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-amber-400 border border-slate-800 transition"
+                      className="px-2 py-0.5 rounded text-[9px] font-bold bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-amber-400 border border-slate-800 transition"
                     >
                       +{amt}
                     </button>
                   ))}
                 </div>
 
-                {/* Item Subtotal */}
-                <div className="flex justify-between items-center text-xs pt-1 border-t border-slate-900">
+                {/* Subtotal */}
+                <div className="flex justify-between items-center text-xs pt-1.5 border-t border-slate-900">
                   <span className="text-slate-500 text-[10px]">Subtotal:</span>
-                  <span className="font-bold text-slate-200 font-mono">
+                  <span className="font-black text-slate-100 font-mono text-sm">
                     {formatRupiah(item.subtotal)}
                   </span>
                 </div>
@@ -518,40 +602,41 @@ export default function KasirPOS() {
 
             {cart.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-center text-slate-500 py-16">
-                <ShoppingCart className="w-10 h-10 mb-2 opacity-20 text-amber-400" />
-                <p className="text-xs font-bold text-slate-400">Belum Ada Produk Dipilih</p>
-                <p className="text-[10px] text-slate-600 mt-1 max-w-[200px]">
-                  Klik pada katalog rokok di sebelah kiri untuk menambah kuantiti order.
+                <ShoppingCart className="w-12 h-12 mb-3 opacity-20 text-amber-400" />
+                <p className="text-sm font-bold text-slate-300">Belum Ada Item Belanja</p>
+                <p className="text-xs text-slate-500 mt-1 max-w-[220px]">
+                  Klik pada katalog rokok di sebelah kiri untuk memasukkan barang ke nota.
                 </p>
               </div>
             )}
           </div>
 
-          {/* Slip Footer & Save Button */}
+          {/* Register Footer */}
           {cart.length > 0 && (
-            <div className="p-3.5 bg-slate-950 border-t border-slate-800 space-y-2.5">
+            <div className="p-4 bg-slate-950 border-t border-slate-800 space-y-3">
               <div className="space-y-1 text-xs">
-                <div className="flex justify-between text-slate-400 text-[11px]">
+                <div className="flex justify-between text-slate-400 text-xs">
                   <span>Est. Margin Laba:</span>
-                  <span className="text-emerald-400 font-mono font-semibold">
+                  <span className="text-emerald-400 font-mono font-bold">
                     +{formatRupiah(totalEstimatedProfit)}
                   </span>
                 </div>
                 <div className="flex justify-between items-baseline text-white pt-1 border-t border-slate-900">
-                  <span className="font-extrabold text-xs uppercase tracking-wider text-slate-300">TOTAL BAYAR:</span>
-                  <span className="font-black text-lg sm:text-xl text-amber-400 font-mono">
+                  <span className="font-black text-xs uppercase tracking-wider text-slate-300">TOTAL PEMBAYARAN:</span>
+                  <span className="font-black text-xl sm:text-2xl text-amber-400 font-mono">
                     {formatRupiah(totalAmount)}
                   </span>
                 </div>
               </div>
 
+              {/* Checkout Button */}
               <button
                 disabled={isSubmitting}
-                onClick={handleCheckout}
-                className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-amber-500/20 flex items-center justify-center space-x-2 transition disabled:opacity-50"
+                onClick={() => setShowPaymentModal(true)}
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-sm uppercase tracking-wider shadow-xl shadow-amber-500/25 flex items-center justify-center space-x-2 transition transform active:scale-98 disabled:opacity-50"
               >
                 <Printer className="w-4 h-4" />
-                <span>{isSubmitting ? 'Menyimpan...' : 'Simpan & Cetak Nota'}</span>
+                <span>Bayar & Cetak Struk (F9)</span>
               </button>
             </div>
           )}
@@ -560,7 +645,20 @@ export default function KasirPOS() {
 
       </div>
 
-      {/* Modal Cetak Nota */}
+      {/* MODAL PEMBAYARAN & HITUNG KEMBALIAN */}
+      {showPaymentModal && (
+        <PaymentModal
+          totalAmount={totalAmount}
+          itemCount={cart.length}
+          customerName={selectedCustomerObj?.name}
+          customerCode={selectedCustomerObj?.code}
+          isProcessing={isSubmitting}
+          onConfirm={handleConfirmPayment}
+          onClose={() => setShowPaymentModal(false)}
+        />
+      )}
+
+      {/* MODAL CETAK NOTA / STRUK RESMI */}
       {completedInvoice && (
         <ReceiptModal
           invoice={completedInvoice}
