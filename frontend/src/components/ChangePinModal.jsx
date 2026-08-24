@@ -40,27 +40,27 @@ export default function ChangePinModal({ onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-      <div className="w-full max-w-md bg-[#ffffff] rounded-[26px] p-6 space-y-4 border border-[#0f0f0f] shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+      <div className="w-full max-w-md bg-white rounded-3xl p-6 space-y-4 border border-slate-200 shadow-2xl">
         
-        <div className="flex items-center justify-between border-b border-[#0f0f0f]/10 pb-3">
-          <h3 className="font-extrabold text-[#0f0f0f] text-base flex items-center gap-2">
-            <KeyRound className="w-5 h-5 text-[#0f0f0f]" />
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
+            <KeyRound className="w-5 h-5 text-emerald-600" />
             <span>Ganti Kode Akses PIN Master</span>
           </h3>
-          <button onClick={onClose} className="p-1 rounded-full text-[#0f0f0f] hover:bg-[#ecefec]">
+          <button onClick={onClose} className="p-1 rounded-full text-slate-400 hover:text-slate-700">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {error && (
-          <div className="text-xs text-[#0f0f0f] bg-[#ffd0e2] p-2.5 rounded-[14px] border border-[#0f0f0f] font-bold">
+          <div className="text-xs text-rose-700 bg-rose-50 p-2.5 rounded-xl border border-rose-200 font-bold">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="text-xs text-[#0f0f0f] bg-[#05c92f] p-2.5 rounded-[14px] border border-[#0f0f0f] font-bold flex items-center gap-1.5">
+          <div className="text-xs text-emerald-700 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 font-bold flex items-center gap-1.5">
             <Check className="w-4 h-4" />
             <span>{success}</span>
           </div>
@@ -68,38 +68,38 @@ export default function ChangePinModal({ onClose }) {
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="block text-xs font-bold text-[#0f0f0f] mb-1">Kode Akses Saat Ini (Lama)</label>
+            <label className="block text-xs font-bold text-slate-600 mb-1">Kode Akses Saat Ini (Lama)</label>
             <input
               type="password"
               required
               value={currentCode}
               onChange={(e) => setCurrentCode(e.target.value)}
               placeholder="Masukkan kode lama"
-              className="w-full bg-[#eeeeee] text-[#0f0f0f] px-4 py-2.5 rounded-[35px] border border-[#0f0f0f] text-xs focus:outline-none font-mono tracking-widest"
+              className="w-full bg-slate-50 text-slate-800 px-4 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500 font-mono tracking-widest"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-[#0f0f0f] mb-1">Kode Akses Baru (Min. 4 digit)</label>
+            <label className="block text-xs font-bold text-slate-600 mb-1">Kode Akses Baru (Min. 4 digit)</label>
             <input
               type="password"
               required
               value={newCode}
               onChange={(e) => setNewCode(e.target.value)}
               placeholder="Masukkan kode baru rahasia"
-              className="w-full bg-[#eeeeee] text-[#0f0f0f] px-4 py-2.5 rounded-[35px] border border-[#0f0f0f] text-xs focus:outline-none font-mono tracking-widest"
+              className="w-full bg-slate-50 text-slate-800 px-4 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500 font-mono tracking-widest"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-[#0f0f0f] mb-1">Ulangi Kode Akses Baru</label>
+            <label className="block text-xs font-bold text-slate-600 mb-1">Ulangi Kode Akses Baru</label>
             <input
               type="password"
               required
               value={confirmCode}
               onChange={(e) => setConfirmCode(e.target.value)}
               placeholder="Ketik ulang kode baru"
-              className="w-full bg-[#eeeeee] text-[#0f0f0f] px-4 py-2.5 rounded-[35px] border border-[#0f0f0f] text-xs focus:outline-none font-mono tracking-widest"
+              className="w-full bg-slate-50 text-slate-800 px-4 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500 font-mono tracking-widest"
             />
           </div>
 
@@ -107,14 +107,14 @@ export default function ChangePinModal({ onClose }) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-[35px] text-xs font-bold text-[#5a585a] hover:text-[#0f0f0f]"
+              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-800"
             >
               Batal
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="ctrl-btn-lime text-xs font-bold disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs disabled:opacity-50"
             >
               {isSubmitting ? 'Menyimpan...' : 'Simpan Kode Baru'}
             </button>

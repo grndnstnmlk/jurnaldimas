@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   ShoppingCart, 
   Receipt, 
@@ -9,8 +9,7 @@ import {
   Lock, 
   KeyRound, 
   ChevronLeft,
-  SlidersHorizontal,
-  CircleDot
+  Store
 } from 'lucide-react';
 import { useRealtime } from '../context/RealtimeContext';
 import { useAuth } from '../context/AuthContext';
@@ -31,53 +30,48 @@ export default function Navbar({ activeTab, setActiveTab }) {
   ];
 
   return (
-    <header className="sticky top-0 z-40 bg-[#f9faf9] border-b border-[#0f0f0f]/10 backdrop-blur-md">
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200">
       
       {/* Top Bar Header */}
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-3">
-        <div className="flex items-center justify-between gap-3">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="flex items-center justify-between h-16">
           
-          {/* Logo with Chrome Dots Signature */}
+          {/* Logo & Store Title */}
           <div 
             onClick={() => setActiveTab('kasir')}
             className="cursor-pointer flex items-center space-x-2.5 select-none"
           >
-            <div className="w-8 h-8 rounded-[9px] bg-[#0f0f0f] text-white font-black text-xs flex items-center justify-center border border-[#0f0f0f]">
-              MC
+            <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+              <Store className="w-5 h-5" />
             </div>
-            <div className="flex items-center space-x-2">
-              <span className="font-extrabold text-base sm:text-lg text-[#0f0f0f] tracking-tight font-sans">
-                MASTER CIGARETTES
+            <div>
+              <span className="font-extrabold text-base sm:text-lg text-slate-800 tracking-tight block leading-tight">
+                CV. MASTER CIGARETTES
               </span>
-              {/* Chrome Dots Icon */}
-              <div className="hidden sm:flex items-center space-x-1">
-                <span className="w-2 h-2 rounded-full bg-[#05c92f]"></span>
-                <span className="w-2 h-2 rounded-full bg-[#fcea59]"></span>
-                <span className="w-2 h-2 rounded-full bg-[#ffd0e2]"></span>
-              </div>
+              <span className="text-[11px] text-slate-500 font-medium hidden sm:block">
+                Sistem Jurnal & POS Kasir Terpadu
+              </span>
             </div>
           </div>
 
-          {/* Centered Ghost Nav Pill (Bone-colored rounded container ~9px radius) */}
-          <nav className="hidden lg:flex items-center bg-[#ecefec] p-1 rounded-[9px] border border-[#0f0f0f]/15">
-            {tabs.map((tab, idx) => {
+          {/* Desktop Navigation Links */}
+          <nav className="hidden lg:flex items-center space-x-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/80">
+            {tabs.map((tab) => {
               const isActive = activeTab === tab.id;
               const Icon = tab.icon;
               return (
-                <React.Fragment key={tab.id}>
-                  {idx > 0 && <span className="w-[1px] h-3.5 bg-[#0f0f0f]/20 my-auto"></span>}
-                  <button
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`px-3 py-1.5 rounded-[7px] text-xs font-semibold flex items-center space-x-1.5 transition ${
-                      isActive 
-                        ? 'bg-[#0f0f0f] text-[#ffffff] font-bold shadow-xs' 
-                        : 'text-[#0f0f0f] hover:bg-[#ffffff]/60'
-                    }`}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    <span>{tab.label}</span>
-                  </button>
-                </React.Fragment>
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition ${
+                    isActive 
+                      ? 'bg-white text-emerald-700 shadow-xs border border-slate-200/80' 
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                  }`}
+                >
+                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-emerald-600' : 'text-slate-500'}`} />
+                  <span>{tab.label}</span>
+                </button>
               );
             })}
           </nav>
@@ -87,34 +81,27 @@ export default function Navbar({ activeTab, setActiveTab }) {
             
             {/* Live Indicator Pill */}
             <div 
-              title={isConnected ? 'Real-time Server Active' : 'Connecting...'}
-              className="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-[35px] bg-[#ffffff] border border-[#0f0f0f] text-[11px] font-bold text-[#0f0f0f]"
+              title={isConnected ? 'Terkoneksi Real-time' : 'Menghubungkan...'}
+              className="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-[11px] font-bold text-emerald-700"
             >
-              <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-[#05c92f]' : 'bg-[#ffd0e2] animate-pulse'}`}></span>
-              <span>{isConnected ? 'LIVE' : 'OFFLINE'}</span>
+              <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500' : 'bg-amber-400 animate-pulse'}`}></span>
+              <span>{isConnected ? 'ONLINE' : 'OFFLINE'}</span>
             </div>
-
-            {/* Atur Harga / Matriks Shortcut Pill */}
-            <button
-              onClick={() => setActiveTab('matriks')}
-              className="hidden sm:inline-flex items-center px-4 py-1.5 rounded-[35px] bg-[#fcea59] text-[#0f0f0f] text-xs font-bold border border-[#0f0f0f] hover:bg-[#fbd938] transition active:scale-95"
-            >
-              Atur Harga
-            </button>
 
             {/* Change PIN Button */}
             <button
               onClick={() => setShowChangePin(true)}
-              className="p-2 rounded-[35px] bg-[#ffffff] text-[#0f0f0f] border border-[#0f0f0f] hover:bg-[#ecefec] transition"
+              className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-200 transition"
               title="Ganti Kode Akses / PIN"
             >
-              <KeyRound className="w-3.5 h-3.5" />
+              <KeyRound className="w-3.5 h-3.5 text-slate-600" />
+              <span className="hidden sm:inline">PIN</span>
             </button>
 
-            {/* Black Download / Lock Button */}
+            {/* Lock Button */}
             <button
               onClick={logout}
-              className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-[35px] bg-[#0f0f0f] hover:bg-[#000000] text-[#ffffff] text-xs font-bold border border-[#0f0f0f] transition active:scale-95"
+              className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold border border-rose-200 transition"
               title="Kunci Aplikasi"
             >
               <Lock className="w-3.5 h-3.5" />
@@ -126,8 +113,8 @@ export default function Navbar({ activeTab, setActiveTab }) {
         </div>
       </div>
 
-      {/* Mobile Sub-Nav Row */}
-      <div className="lg:hidden bg-[#ecefec] border-t border-[#0f0f0f]/10 overflow-x-auto no-scrollbar py-1.5 px-3">
+      {/* Mobile Navigation Tabs */}
+      <div className="lg:hidden bg-slate-50 border-t border-slate-200 overflow-x-auto no-scrollbar py-2 px-3">
         <div className="flex space-x-1.5 min-w-max">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
@@ -136,10 +123,10 @@ export default function Navbar({ activeTab, setActiveTab }) {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-3 py-1.5 rounded-[9px] text-xs font-semibold flex items-center space-x-1.5 transition ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition ${
                   isActive 
-                    ? 'bg-[#0f0f0f] text-[#ffffff] font-bold' 
-                    : 'text-[#0f0f0f] hover:bg-[#ffffff]/60'
+                    ? 'bg-emerald-600 text-white shadow-xs' 
+                    : 'bg-white text-slate-600 border border-slate-200'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
