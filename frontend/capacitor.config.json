@@ -1,0 +1,12 @@
+{
+  "appId": "com.mastercigarettes.pos",
+  "appName": "Master Cigarettes POS",
+  "webDir": "dist",
+  "server": {
+    "url": "https://jurnaldimas.onrender.com",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}

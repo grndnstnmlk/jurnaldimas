@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Master Cigarettes POS</string>
+    <string name="title_activity_main">Master Cigarettes POS</string>
+    <string name="package_name">com.mastercigarettes.pos</string>
+    <string name="custom_url_scheme">com.mastercigarettes.pos</string>
+</resources>
