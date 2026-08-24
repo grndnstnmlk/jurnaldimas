@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   X, 
   CheckCircle2, 
@@ -22,12 +22,11 @@ export default function PaymentModal({
   onClose,
   isProcessing 
 }) {
-  const [paymentMethod, setPaymentMethod] = useState('TUNAI'); // 'TUNAI', 'TRANSFER', 'TEMPO'
+  const [paymentMethod, setPaymentMethod] = useState('TUNAI');
   const [cashReceived, setCashReceived] = useState(totalAmount);
   const [tempoDueDate, setTempoDueDate] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
 
-  // Pre-calculated quick cash amounts
   const quickCashOptions = [
     { label: 'Uang Pas', value: totalAmount },
     { label: '50.000', value: 50000 },
@@ -42,10 +41,6 @@ export default function PaymentModal({
   const changeAmount = Math.max(0, cashReceived - totalAmount);
   const isCashInsufficient = paymentMethod === 'TUNAI' && cashReceived < totalAmount;
 
-  const handleSelectQuickCash = (val) => {
-    setCashReceived(val);
-  };
-
   const handleFinalSubmit = (e) => {
     e.preventDefault();
     if (isCashInsufficient) return;
@@ -59,47 +54,47 @@ export default function PaymentModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md">
-      <div className="w-full max-w-lg bg-slate-900 border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
+      <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
           <div className="flex items-center space-x-2.5">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/30">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
               <Banknote className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-black text-white text-base">Pembayaran & Cetak Nota</h3>
-              <p className="text-xs text-slate-400">
-                Pelanggan: <span className="text-amber-400 font-bold">[{customerCode || '-'}] {customerName || 'Umum'}</span>
+              <h3 className="font-extrabold text-slate-900 text-base">Pembayaran & Cetak Nota</h3>
+              <p className="text-xs text-slate-500">
+                Pelanggan: <span className="text-emerald-700 font-bold">[{customerCode || '-'}] {customerName || 'Umum'}</span>
               </p>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <form onSubmit={handleFinalSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
+        <form onSubmit={handleFinalSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
           
           {/* Total Tagihan Box */}
-          <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-950 to-slate-900 border border-slate-800 text-center">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">TOTAL TAGIHAN BELANJA</span>
-            <div className="text-3xl sm:text-4xl font-black text-amber-400 font-mono tracking-tight mt-1">
+          <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-100 text-center">
+            <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">TOTAL TAGIHAN BELANJA</span>
+            <div className="text-3xl sm:text-4xl font-black text-emerald-600 font-mono tracking-tight mt-0.5">
               {formatRupiah(totalAmount)}
             </div>
-            <div className="text-xs text-slate-400 mt-1">
+            <div className="text-xs text-slate-500 mt-1">
               {itemCount} macam barang pesanan
             </div>
           </div>
 
           {/* Payment Method Selector */}
           <div>
-            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
               Metode Pembayaran
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -115,10 +110,10 @@ export default function PaymentModal({
                     key={m.id}
                     type="button"
                     onClick={() => setPaymentMethod(m.id)}
-                    className={`py-3 px-2 rounded-xl text-xs font-bold flex flex-col items-center gap-1.5 transition border ${
+                    className={`py-3 px-2 rounded-2xl text-xs font-bold flex flex-col items-center gap-1.5 transition border ${
                       active 
-                        ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/20' 
-                        : 'bg-slate-950/60 text-slate-400 hover:text-slate-200 border-slate-800 hover:bg-slate-800/60'
+                        ? 'bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-500/20' 
+                        : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-slate-200'
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -129,23 +124,21 @@ export default function PaymentModal({
             </div>
           </div>
 
-          {/* CASH PAYMENT SECTION */}
+          {/* Cash Payment Details */}
           {paymentMethod === 'TUNAI' && (
-            <div className="space-y-3 bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80">
+            <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-100">
               <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
                   Uang Diterima (Rp)
                 </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    required
-                    autoFocus
-                    value={cashReceived}
-                    onChange={(e) => setCashReceived(Number(e.target.value))}
-                    className="w-full bg-slate-900 text-white pl-4 pr-4 py-3 rounded-xl border border-slate-700 font-mono text-xl font-bold focus:outline-none focus:border-amber-500"
-                  />
-                </div>
+                <input
+                  type="number"
+                  required
+                  autoFocus
+                  value={cashReceived}
+                  onChange={(e) => setCashReceived(Number(e.target.value))}
+                  className="w-full bg-white text-slate-900 px-4 py-2.5 rounded-xl border border-slate-200 font-mono text-xl font-bold focus:outline-none focus:border-emerald-500 shadow-xs"
+                />
               </div>
 
               {/* Quick Cash Buttons */}
@@ -154,11 +147,11 @@ export default function PaymentModal({
                   <button
                     key={idx}
                     type="button"
-                    onClick={() => handleSelectQuickCash(opt.value)}
-                    className={`px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold transition border ${
+                    onClick={() => setCashReceived(opt.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition border ${
                       cashReceived === opt.value
-                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
-                        : 'bg-slate-900 text-slate-400 hover:text-white border-slate-800'
+                        ? 'bg-emerald-500 text-white border-emerald-500'
+                        : 'bg-white text-slate-600 hover:bg-slate-100 border-slate-200'
                     }`}
                   >
                     {opt.label === 'Uang Pas' ? 'Uang Pas' : formatRupiah(opt.value)}
@@ -167,65 +160,65 @@ export default function PaymentModal({
               </div>
 
               {/* Kembalian Box */}
-              <div className="pt-2 border-t border-slate-900 flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-400 uppercase">Uang Kembalian:</span>
-                <span className={`text-xl font-black font-mono ${changeAmount > 0 ? 'text-emerald-400' : 'text-slate-400'}`}>
+              <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase">Uang Kembalian:</span>
+                <span className={`text-xl font-black font-mono ${changeAmount > 0 ? 'text-emerald-600' : 'text-slate-600'}`}>
                   {formatRupiah(changeAmount)}
                 </span>
               </div>
 
               {isCashInsufficient && (
-                <div className="text-xs text-rose-400 font-bold text-center">
+                <div className="text-xs text-rose-600 font-bold text-center">
                   ⚠️ Uang diterima kurang dari total tagihan!
                 </div>
               )}
             </div>
           )}
 
-          {/* TEMPO / HUTANG SECTION */}
+          {/* Tempo / Due date */}
           {paymentMethod === 'TEMPO' && (
-            <div className="space-y-3 bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80">
+            <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-100">
               <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
                   Jatuh Tempo Pembayaran
                 </label>
                 <input
                   type="date"
                   value={tempoDueDate}
                   onChange={(e) => setTempoDueDate(e.target.value)}
-                  className="w-full bg-slate-900 text-white px-3.5 py-2.5 rounded-xl border border-slate-700 text-xs focus:outline-none focus:border-amber-500"
+                  className="w-full bg-white text-slate-900 px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
                 />
               </div>
             </div>
           )}
 
-          {/* Catatan Transaksi */}
+          {/* Notes */}
           <div>
-            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
-              Keterangan / Catatan Nota (Opsional)
+            <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
+              Catatan / Keterangan (Opsional)
             </label>
             <input
               type="text"
               value={paymentNotes}
               onChange={(e) => setPaymentNotes(e.target.value)}
-              placeholder="Contoh: Titip di toko / Sales Dimas"
-              className="w-full bg-slate-950 text-white px-3.5 py-2.5 rounded-xl border border-slate-700 text-xs focus:outline-none focus:border-amber-500"
+              placeholder="Contoh: Titip toko / Sales Dimas"
+              className="w-full bg-white text-slate-900 px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
             />
           </div>
 
           {/* Action Buttons */}
-          <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-3">
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white"
+              className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800"
             >
               Batal
             </button>
             <button
               type="submit"
               disabled={isProcessing || isCashInsufficient}
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-sm uppercase tracking-wider shadow-xl shadow-amber-500/25 flex items-center gap-2 transition disabled:opacity-40"
+              className="px-6 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-sm uppercase tracking-wider shadow-lg shadow-emerald-500/25 flex items-center gap-2 transition active:scale-95 disabled:opacity-40"
             >
               <Printer className="w-4 h-4" />
               <span>{isProcessing ? 'Memproses...' : 'Selesaikan Transaksi (F9)'}</span>

@@ -16,13 +16,12 @@ import { useRealtime } from '../context/RealtimeContext';
 
 export default function MasterData() {
   const { eventCounter } = useRealtime();
-  const [activeTab, setActiveTab] = useState('products'); // 'products' or 'customers'
+  const [activeTab, setActiveTab] = useState('products');
   
   const [products, setProducts] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [search, setSearch] = useState('');
 
-  // Modals
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [prodForm, setProdForm] = useState({ name: '', category: 'Rokok', modal_price: 0, default_price: 0, initial_stock: 0 });
@@ -56,7 +55,6 @@ export default function MasterData() {
     }
   };
 
-  // Product Actions
   const handleOpenNewProduct = () => {
     setEditingProduct(null);
     setProdForm({ name: '', category: 'Rokok', modal_price: 0, default_price: 0, initial_stock: 0 });
@@ -109,7 +107,6 @@ export default function MasterData() {
     }
   };
 
-  // Customer Actions
   const handleOpenNewCustomer = () => {
     setEditingCustomer(null);
     setCustForm({ code: '', name: '', phone: '', address: '' });
@@ -166,105 +163,98 @@ export default function MasterData() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5 space-y-4">
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white">Master Data & Katalog</h1>
-          <p className="text-sm text-slate-400">Pengelolaan master 120 produk tembakau/rokok dan direktori 26+ pelanggan</p>
+          <h1 className="text-xl font-extrabold text-slate-900">Master Data & Katalog</h1>
+          <p className="text-xs text-slate-500">Katalog 120 produk rokok dan direktori 26 pelanggan</p>
         </div>
         <div>
           {activeTab === 'products' ? (
             <button
               onClick={handleOpenNewProduct}
-              className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-amber-500/20"
+              className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-xs"
             >
               <Plus className="w-4 h-4" />
-              <span>Tambah Produk Baru</span>
+              <span>+ Tambah Produk</span>
             </button>
           ) : (
             <button
               onClick={handleOpenNewCustomer}
-              className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-indigo-600/20"
+              className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-xs"
             >
               <Plus className="w-4 h-4" />
-              <span>Tambah Pelanggan Baru</span>
+              <span>+ Tambah Pelanggan</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* Tab Switcher */}
-      <div className="flex items-center space-x-2 border-b border-slate-800 pb-2">
-        <button
-          onClick={() => { setActiveTab('products'); setSearch(''); }}
-          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition ${
-            activeTab === 'products' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800'
-          }`}
-        >
-          <Package className="w-4 h-4" />
-          <span>Katalog Produk ({products.length})</span>
-        </button>
-        <button
-          onClick={() => { setActiveTab('customers'); setSearch(''); }}
-          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition ${
-            activeTab === 'customers' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white hover:bg-slate-800'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          <span>Direktori Pelanggan ({customers.length})</span>
-        </button>
+      {/* Switcher & Search */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="flex items-center space-x-2 border-b border-slate-200 pb-1 w-full sm:w-auto">
+          <button
+            onClick={() => { setActiveTab('products'); setSearch(''); }}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
+              activeTab === 'products' ? 'bg-emerald-500 text-white shadow-xs' : 'text-slate-500 hover:bg-slate-100'
+            }`}
+          >
+            Katalog Produk ({products.length})
+          </button>
+          <button
+            onClick={() => { setActiveTab('customers'); setSearch(''); }}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
+              activeTab === 'customers' ? 'bg-emerald-500 text-white shadow-xs' : 'text-slate-500 hover:bg-slate-100'
+            }`}
+          >
+            Direktori Pelanggan ({customers.length})
+          </button>
+        </div>
+
+        <div className="relative w-full sm:w-72">
+          <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder={activeTab === 'products' ? 'Cari produk...' : 'Cari nama/kode pelanggan...'}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full bg-white text-slate-900 pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500 shadow-xs"
+          />
+        </div>
       </div>
 
-      {/* Search Input */}
-      <div className="relative w-full sm:w-80">
-        <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
-        <input
-          type="text"
-          placeholder={activeTab === 'products' ? 'Cari nama produk...' : 'Cari nama/kode pelanggan...'}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full bg-slate-900 text-white pl-9 pr-3 py-2 rounded-xl border border-slate-700 text-xs focus:outline-none focus:border-amber-500"
-        />
-      </div>
-
-      {/* PRODUCTS TABLE */}
+      {/* Products Table */}
       {activeTab === 'products' && (
-        <div className="glass-panel rounded-2xl overflow-hidden">
+        <div className="fintech-card rounded-2xl overflow-hidden bg-white">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-300">
-              <thead className="bg-slate-900/90 text-xs uppercase text-slate-400 border-b border-slate-800 font-semibold">
+            <table className="w-full text-left text-xs sm:text-sm">
+              <thead className="bg-slate-50 text-slate-500 border-b border-slate-100 uppercase text-[11px] font-bold">
                 <tr>
                   <th className="px-4 py-3">Nama Produk</th>
-                  <th className="px-4 py-3">Kategori</th>
-                  <th className="px-4 py-3 text-right">Harga Modal (HPP)</th>
-                  <th className="px-4 py-3 text-center">Stok Saat Ini</th>
+                  <th className="px-4 py-3 text-right">Modal Pokok (HPP)</th>
+                  <th className="px-4 py-3 text-center">Stok Sisa</th>
                   <th className="px-4 py-3 text-center">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-slate-100 font-mono">
                 {filteredProducts.map((p) => (
-                  <tr key={p.id} className="hover:bg-slate-800/40 transition">
-                    <td className="px-4 py-3 font-bold text-slate-200">{p.name}</td>
-                    <td className="px-4 py-3 text-slate-400 text-xs">{p.category}</td>
-                    <td className="px-4 py-3 text-right font-mono font-bold text-amber-400">
-                      {formatRupiah(p.modal_price)}
-                    </td>
-                    <td className="px-4 py-3 text-center font-mono font-bold text-slate-300">
-                      {p.stok_akhir ?? 0}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
+                  <tr key={p.id} className="hover:bg-slate-50 transition">
+                    <td className="px-4 py-2.5 font-sans font-bold text-slate-900">{p.name}</td>
+                    <td className="px-4 py-2.5 text-right font-bold text-slate-700">{formatRupiah(p.modal_price)}</td>
+                    <td className="px-4 py-2.5 text-center font-bold text-emerald-600">{p.stok_akhir ?? 0}</td>
+                    <td className="px-4 py-2.5 text-center font-sans">
+                      <div className="flex items-center justify-center gap-1">
                         <button
                           onClick={() => handleOpenEditProduct(p)}
-                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-amber-400"
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50"
                         >
                           <Edit className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => handleDeleteProduct(p)}
-                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -278,44 +268,44 @@ export default function MasterData() {
         </div>
       )}
 
-      {/* CUSTOMERS TABLE */}
+      {/* Customers Table */}
       {activeTab === 'customers' && (
-        <div className="glass-panel rounded-2xl overflow-hidden">
+        <div className="fintech-card rounded-2xl overflow-hidden bg-white">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-300">
-              <thead className="bg-slate-900/90 text-xs uppercase text-slate-400 border-b border-slate-800 font-semibold">
+            <table className="w-full text-left text-xs sm:text-sm">
+              <thead className="bg-slate-50 text-slate-500 border-b border-slate-100 uppercase text-[11px] font-bold">
                 <tr>
-                  <th className="px-4 py-3">Kode Pelanggan</th>
-                  <th className="px-4 py-3">Nama Lengkap</th>
-                  <th className="px-4 py-3 text-center">Total Transaksi</th>
-                  <th className="px-4 py-3 text-right">Volume Belanja</th>
+                  <th className="px-4 py-3">Kode</th>
+                  <th className="px-4 py-3">Nama Lengkap Pelanggan</th>
+                  <th className="px-4 py-3 text-center">Jumlah Nota</th>
+                  <th className="px-4 py-3 text-right">Total Transaksi</th>
                   <th className="px-4 py-3 text-center">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-slate-100">
                 {filteredCustomers.map((c) => (
-                  <tr key={c.id} className="hover:bg-slate-800/40 transition">
-                    <td className="px-4 py-3 font-mono font-bold text-amber-400">
-                      <span className="px-2 py-1 rounded bg-slate-800 text-amber-300">
+                  <tr key={c.id} className="hover:bg-slate-50 transition">
+                    <td className="px-4 py-3 font-mono font-bold text-emerald-700">
+                      <span className="px-2 py-1 rounded bg-emerald-50 border border-emerald-100 font-black">
                         {c.code}
                       </span>
                     </td>
-                    <td className="px-4 py-3 font-semibold text-slate-200">{c.name}</td>
-                    <td className="px-4 py-3 text-center text-slate-400">{c.total_invoices || 0} nota</td>
-                    <td className="px-4 py-3 text-right font-mono font-bold text-emerald-400">
+                    <td className="px-4 py-3 font-bold text-slate-900">{c.name}</td>
+                    <td className="px-4 py-3 text-center text-slate-500">{c.total_invoices || 0}</td>
+                    <td className="px-4 py-3 text-right font-mono font-bold text-emerald-600">
                       {formatRupiah(c.total_transactions || 0)}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <div className="flex items-center justify-center gap-1.5">
+                      <div className="flex items-center justify-center gap-1">
                         <button
                           onClick={() => handleOpenEditCustomer(c)}
-                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-indigo-400"
+                          className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50"
                         >
                           <Edit className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => handleDeleteCustomer(c)}
-                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-300 hover:text-rose-400"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -329,79 +319,57 @@ export default function MasterData() {
         </div>
       )}
 
-      {/* PRODUCT MODAL */}
+      {/* Product Modal */}
       {showProductModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-white text-base">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl w-full max-w-md p-6 space-y-4 shadow-2xl border border-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-slate-900 text-base">
                 {editingProduct ? 'Edit Produk' : 'Tambah Produk Baru'}
               </h3>
-              <button onClick={() => setShowProductModal(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setShowProductModal(false)} className="p-1 rounded-full text-slate-400 hover:text-slate-700">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleSaveProduct} className="space-y-3">
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Nama Produk</label>
+                <label className="block text-xs font-bold text-slate-600 mb-1">Nama Produk Rokok</label>
                 <input
                   type="text"
                   required
                   value={prodForm.name}
                   onChange={(e) => setProdForm({ ...prodForm, name: e.target.value })}
                   placeholder="Contoh: ESTE BLUEBERRY"
-                  className="w-full bg-slate-950 text-white px-3 py-2 rounded-xl border border-slate-700 text-xs focus:outline-none focus:border-amber-500"
+                  className="w-full bg-slate-50 text-slate-900 px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500 font-semibold"
                 />
               </div>
 
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Kategori</label>
-                <input
-                  type="text"
-                  value={prodForm.category}
-                  onChange={(e) => setProdForm({ ...prodForm, category: e.target.value })}
-                  className="w-full bg-slate-950 text-white px-3 py-2 rounded-xl border border-slate-700 text-xs focus:outline-none focus:border-amber-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Harga Modal / HPP (Rupiah)</label>
+                <label className="block text-xs font-bold text-slate-600 mb-1">Harga Modal / HPP (Rp)</label>
                 <input
                   type="number"
                   required
                   value={prodForm.modal_price}
                   onChange={(e) => setProdForm({ ...prodForm, modal_price: Number(e.target.value) })}
                   placeholder="Contoh: 58000"
-                  className="w-full bg-slate-950 text-white px-3 py-2 rounded-xl border border-slate-700 text-xs focus:outline-none focus:border-amber-500 font-mono"
+                  className="w-full bg-slate-50 text-slate-900 px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono font-bold focus:outline-none focus:border-emerald-500"
                 />
               </div>
-
-              {!editingProduct && (
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1">Stok Awal Fisik</label>
-                  <input
-                    type="number"
-                    value={prodForm.initial_stock}
-                    onChange={(e) => setProdForm({ ...prodForm, initial_stock: Number(e.target.value) })}
-                    className="w-full bg-slate-950 text-white px-3 py-2 rounded-xl border border-slate-700 text-xs focus:outline-none focus:border-amber-500 font-mono"
-                  />
-                </div>
-              )}
 
               <div className="pt-3 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowProductModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs text-slate-400 hover:text-white"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold shadow-lg shadow-amber-500/20"
+                  className="px-5 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold uppercase tracking-wider shadow-md shadow-emerald-500/20"
                 >
-                  Simpan Produk
+                  Simpan
                 </button>
               </div>
             </form>
@@ -409,15 +377,15 @@ export default function MasterData() {
         </div>
       )}
 
-      {/* CUSTOMER MODAL */}
+      {/* Customer Modal */}
       {showCustomerModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-white text-base">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl w-full max-w-md p-6 space-y-4 shadow-2xl border border-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-slate-900 text-base">
                 {editingCustomer ? 'Edit Pelanggan' : 'Tambah Pelanggan Baru'}
               </h3>
-              <button onClick={() => setShowCustomerModal(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => setShowCustomerModal(false)} className="p-1 rounded-full text-slate-400 hover:text-slate-700">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -425,7 +393,7 @@ export default function MasterData() {
             <form onSubmit={handleSaveCustomer} className="space-y-3">
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1">Kode (3-4 Huruf)</label>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">Kode</label>
                   <input
                     type="text"
                     required
@@ -433,57 +401,35 @@ export default function MasterData() {
                     value={custForm.code}
                     onChange={(e) => setCustForm({ ...custForm, code: e.target.value.toUpperCase() })}
                     placeholder="SIM"
-                    className="w-full bg-slate-950 text-white px-3 py-2 rounded-xl border border-slate-700 text-xs focus:outline-none focus:border-indigo-500 font-mono font-bold uppercase"
+                    className="w-full bg-slate-50 text-slate-900 px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono font-black focus:outline-none focus:border-emerald-500 uppercase"
                   />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs text-slate-400 mb-1">Nama Lengkap</label>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">Nama Lengkap</label>
                   <input
                     type="text"
                     required
                     value={custForm.name}
                     onChange={(e) => setCustForm({ ...custForm, name: e.target.value })}
-                    placeholder="Contoh: SIMO / TOKO A"
-                    className="w-full bg-slate-950 text-white px-3 py-2 rounded-xl border border-slate-700 text-xs focus:outline-none focus:border-indigo-500"
+                    placeholder="Contoh: SIMO"
+                    className="w-full bg-slate-50 text-slate-900 px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold focus:outline-none focus:border-emerald-500"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">No. WhatsApp / HP</label>
-                <input
-                  type="text"
-                  value={custForm.phone}
-                  onChange={(e) => setCustForm({ ...custForm, phone: e.target.value })}
-                  placeholder="0812XXXXXXXX"
-                  className="w-full bg-slate-950 text-white px-3 py-2 rounded-xl border border-slate-700 text-xs focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Alamat / Lokasi</label>
-                <input
-                  type="text"
-                  value={custForm.address}
-                  onChange={(e) => setCustForm({ ...custForm, address: e.target.value })}
-                  placeholder="Contoh: Jl. Diponegoro No. 12"
-                  className="w-full bg-slate-950 text-white px-3 py-2 rounded-xl border border-slate-700 text-xs focus:outline-none focus:border-indigo-500"
-                />
               </div>
 
               <div className="pt-3 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setShowCustomerModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs text-slate-400 hover:text-white"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/20"
+                  className="px-5 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold uppercase tracking-wider shadow-md shadow-emerald-500/20"
                 >
-                  Simpan Pelanggan
+                  Simpan
                 </button>
               </div>
             </form>

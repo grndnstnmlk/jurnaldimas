@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  LayoutDashboard, 
   ShoppingCart, 
   Receipt, 
   Boxes, 
@@ -8,15 +7,14 @@ import {
   TableProperties, 
   Database, 
   Download, 
-  Wifi, 
-  WifiOff, 
   Smartphone,
-  Menu,
-  X,
   Lock,
   KeyRound,
-  LogOut,
-  ShieldCheck
+  ChevronLeft,
+  SlidersHorizontal,
+  Wifi,
+  WifiOff,
+  LayoutDashboard
 } from 'lucide-react';
 import { useRealtime } from '../context/RealtimeContext';
 import { useAuth } from '../context/AuthContext';
@@ -26,7 +24,6 @@ export default function Navbar({ activeTab, setActiveTab }) {
   const { isConnected } = useRealtime();
   const { logout } = useAuth();
   const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showChangePin, setShowChangePin] = useState(false);
 
   useEffect(() => {
@@ -48,9 +45,8 @@ export default function Navbar({ activeTab, setActiveTab }) {
     }
   };
 
-  const navItems = [
-    { id: 'kasir', label: 'Kasir & Nota', icon: ShoppingCart, highlight: true },
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  const tabs = [
+    { id: 'kasir', label: 'Kasir & Nota', icon: ShoppingCart },
     { id: 'riwayat', label: 'Riwayat Nota', icon: Receipt },
     { id: 'stock', label: 'Stock Opname', icon: Boxes },
     { id: 'labarugi', label: 'Laba - Rugi', icon: TrendingUp },
@@ -59,155 +55,105 @@ export default function Navbar({ activeTab, setActiveTab }) {
   ];
 
   return (
-    <header className="sticky top-0 z-50 bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <header className="sticky top-0 z-40 bg-white border-b border-slate-200/80 shadow-xs">
+      
+      {/* Top Bar Header */}
+      <div className="max-w-5xl mx-auto px-4 sm:px-6">
+        <div className="flex items-center justify-between h-14 sm:h-16">
           
-          {/* Logo & Company Name */}
-          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab('dashboard')}>
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
-              <span className="font-black text-slate-950 text-xl tracking-wider">MC</span>
-            </div>
-            <div>
-              <div className="font-bold text-base sm:text-lg text-white leading-tight flex items-center gap-2">
-                CV. MASTER CIGARETTES
-                <span className="hidden sm:inline-block text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                  REALTIME
-                </span>
+          {/* Left: Back / Brand Logo */}
+          <div className="flex items-center space-x-2">
+            <button 
+              onClick={() => setActiveTab('kasir')}
+              className="p-1.5 -ml-1.5 rounded-full hover:bg-slate-100 text-slate-700 transition"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+            <div 
+              onClick={() => setActiveTab('kasir')}
+              className="cursor-pointer flex items-center space-x-2"
+            >
+              <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white font-black text-xs flex items-center justify-center shadow-xs">
+                MC
               </div>
-              <div className="text-xs text-slate-400">Jurnal & POS Terpadu</div>
+              <span className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight">
+                MASTER CIGARETTES
+              </span>
             </div>
           </div>
 
-          {/* Desktop Navigation Links */}
-          <nav className="hidden lg:flex items-center space-x-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id)}
-                  className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
-                    isActive
-                      ? item.highlight 
-                        ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/25'
-                        : 'bg-slate-800 text-amber-400 border border-slate-700'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
-                  }`}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
-          </nav>
-
-          {/* Actions: Live Sync Status, Ganti PIN, Lock & Excel */}
-          <div className="hidden sm:flex items-center space-x-2">
+          {/* Right Actions: Atur Harga / PIN / Lock */}
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            
             {/* Live Indicator */}
             <div 
-              title={isConnected ? 'Terkoneksi Real-time' : 'Menghubungkan kembali...'}
-              className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${
-                isConnected 
-                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' 
-                  : 'bg-rose-500/10 text-rose-400 border-rose-500/30 animate-pulse'
-              }`}
+              title={isConnected ? 'Terkoneksi Real-time' : 'Menghubungkan...'}
+              className="hidden sm:flex items-center space-x-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-200"
             >
-              {isConnected ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
-              <span>{isConnected ? 'LIVE' : 'OFFLINE'}</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>LIVE</span>
             </div>
 
-            {/* Change PIN Button */}
+            {/* Atur Harga Shortcut */}
+            <button
+              onClick={() => setActiveTab('matriks')}
+              className="text-xs sm:text-sm font-bold text-emerald-600 hover:text-emerald-700 hover:underline px-2 py-1 transition"
+            >
+              Atur Harga
+            </button>
+
+            {/* Change PIN */}
             <button
               onClick={() => setShowChangePin(true)}
-              className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition"
-              title="Ganti Kode Akses / PIN Master"
+              className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition"
+              title="Ganti Kode Akses / PIN"
             >
-              <KeyRound className="w-3.5 h-3.5 text-amber-400" />
-              <span>PIN</span>
+              <KeyRound className="w-4 h-4 text-slate-600" />
             </button>
 
-            {/* Lock / Logout Button */}
+            {/* Lock / Logout */}
             <button
               onClick={logout}
-              className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold border border-rose-500/30 transition"
-              title="Kunci Aplikasi / Keluar"
-            >
-              <Lock className="w-3.5 h-3.5" />
-              <span>Kunci</span>
-            </button>
-          </div>
-
-          {/* Mobile Menu Button */}
-          <div className="flex lg:hidden items-center space-x-2">
-            <button
-              onClick={logout}
-              className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/20"
+              className="p-2 rounded-xl text-slate-600 hover:bg-rose-50 hover:text-rose-600 transition"
               title="Kunci Aplikasi"
             >
               <Lock className="w-4 h-4" />
             </button>
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg bg-slate-800 text-slate-300 hover:text-white"
-            >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
+
           </div>
 
         </div>
       </div>
 
-      {/* Mobile Drawer Menu */}
-      {mobileMenuOpen && (
-        <div className="lg:hidden bg-slate-900 border-b border-slate-800 px-4 pt-2 pb-4 space-y-1">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setActiveTab(item.id);
-                  setMobileMenuOpen(false);
-                }}
-                className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg text-sm font-medium ${
-                  isActive
-                    ? 'bg-amber-500 text-slate-950 font-bold'
-                    : 'text-slate-300 hover:bg-slate-800'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-
-          <div className="pt-3 border-t border-slate-800 grid grid-cols-2 gap-2">
-            <button
-              onClick={() => {
-                setShowChangePin(true);
-                setMobileMenuOpen(false);
-              }}
-              className="flex items-center justify-center space-x-1.5 py-2.5 rounded-lg bg-slate-800 text-amber-400 text-xs font-bold"
-            >
-              <KeyRound className="w-4 h-4" />
-              <span>Ganti PIN</span>
-            </button>
-            <button
-              onClick={() => {
-                logout();
-                setMobileMenuOpen(false);
-              }}
-              className="flex items-center justify-center space-x-1.5 py-2.5 rounded-lg bg-rose-600/20 text-rose-300 text-xs font-bold border border-rose-500/30"
-            >
-              <Lock className="w-4 h-4" />
-              <span>Kunci Aplikasi</span>
-            </button>
+      {/* Segmented Top Tabs with Green Underline Active Indicator */}
+      <div className="bg-white border-t border-slate-100">
+        <div className="max-w-5xl mx-auto px-4 overflow-x-auto no-scrollbar">
+          <div className="flex space-x-6 sm:space-x-8 min-w-max">
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.id;
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`py-3 text-xs sm:text-sm font-bold flex items-center space-x-1.5 relative transition-colors ${
+                    isActive 
+                      ? 'text-slate-900 font-extrabold' 
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-500' : 'text-slate-400'}`} />
+                  <span>{tab.label}</span>
+                  {/* Green active underline */}
+                  {isActive && (
+                    <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-emerald-500 rounded-t-md" />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
-      )}
+      </div>
 
       {/* Change PIN Modal */}
       {showChangePin && (

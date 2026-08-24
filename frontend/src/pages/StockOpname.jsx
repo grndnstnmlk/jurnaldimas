@@ -21,7 +21,7 @@ export default function StockOpname() {
   const [logs, setLogs] = useState([]);
   const [search, setSearch] = useState('');
   const [filterLowStock, setFilterLowStock] = useState(false);
-  const [activeSubTab, setActiveSubTab] = useState('inventory'); // 'inventory' or 'logs'
+  const [activeSubTab, setActiveSubTab] = useState('inventory');
 
   // Restock Modal
   const [showRestockModal, setShowRestockModal] = useState(false);
@@ -133,237 +133,146 @@ export default function StockOpname() {
   const totalStokOutAll = stocks.reduce((acc, s) => acc + s.stok_out, 0);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5 space-y-4">
       
-      {/* Header & Quick Action Buttons */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white">Stock Opname & Gudang</h1>
-          <p className="text-sm text-slate-400">Monitoring stok awal, barang masuk, barang keluar, dan sisa akhir fisik</p>
+          <h1 className="text-xl font-extrabold text-slate-900">Stock Opname & Gudang</h1>
+          <p className="text-xs text-slate-500">Monitoring stok fisik, barang masuk, dan sisa gudang</p>
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setShowAdjustModal(true)}
-            className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs sm:text-sm font-semibold border border-slate-700 flex items-center gap-1.5 transition"
+            className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold border border-slate-200 shadow-xs flex items-center gap-1.5 transition"
           >
-            <SlidersHorizontal className="w-4 h-4 text-indigo-400" />
-            <span>Penyesuaian Fisik</span>
+            <SlidersHorizontal className="w-4 h-4 text-slate-500" />
+            <span>Opname Fisik</span>
           </button>
           <button
             onClick={() => setShowRestockModal(true)}
-            className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-lg shadow-amber-500/20 transition"
+            className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-xs transition"
           >
             <Plus className="w-4 h-4" />
-            <span>Input Barang Masuk</span>
+            <span>+ Barang Masuk</span>
           </button>
         </div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="glass-panel p-4 rounded-2xl border-l-4 border-l-emerald-500">
-          <div className="text-slate-400 text-xs font-semibold uppercase">Total Stok Fisik Saat Ini</div>
-          <div className="text-2xl font-black text-white font-mono mt-1">{totalStokAkhirAll} unit</div>
-          <div className="text-xs text-emerald-400 mt-1">Sisa di semua produk</div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="fintech-card p-4 bg-white">
+          <div className="text-slate-500 text-xs font-bold uppercase">Total Sisa Stok Fisik</div>
+          <div className="text-2xl font-black text-emerald-600 font-mono mt-0.5">{totalStokAkhirAll} Slop</div>
+          <div className="text-[11px] text-slate-400 mt-0.5">Sisa seluruh 120 produk</div>
         </div>
-        <div className="glass-panel p-4 rounded-2xl border-l-4 border-l-blue-500">
-          <div className="text-slate-400 text-xs font-semibold uppercase">Total Barang Masuk (Restock)</div>
-          <div className="text-2xl font-black text-blue-400 font-mono mt-1">{totalStokInAll} unit</div>
-          <div className="text-xs text-slate-400 mt-1">Akumulasi pengadaan</div>
+        <div className="fintech-card p-4 bg-white">
+          <div className="text-slate-500 text-xs font-bold uppercase">Total Masuk (Restock)</div>
+          <div className="text-2xl font-black text-blue-600 font-mono mt-0.5">{totalStokInAll} Slop</div>
+          <div className="text-[11px] text-slate-400 mt-0.5">Akumulasi pengadaan</div>
         </div>
-        <div className="glass-panel p-4 rounded-2xl border-l-4 border-l-amber-500">
-          <div className="text-slate-400 text-xs font-semibold uppercase">Total Barang Keluar (Terjual)</div>
-          <div className="text-2xl font-black text-amber-400 font-mono mt-1">{totalStokOutAll} unit</div>
-          <div className="text-xs text-slate-400 mt-1">Melalui nota penjualan</div>
+        <div className="fintech-card p-4 bg-white">
+          <div className="text-slate-500 text-xs font-bold uppercase">Total Keluar (Terjual)</div>
+          <div className="text-2xl font-black text-amber-600 font-mono mt-0.5">{totalStokOutAll} Slop</div>
+          <div className="text-[11px] text-slate-400 mt-0.5">Otomatis terpotong nota</div>
         </div>
       </div>
 
-      {/* Sub-tab Navigation */}
-      <div className="flex items-center space-x-2 border-b border-slate-800 pb-2">
+      {/* Search Bar */}
+      <div className="fintech-card p-3.5 bg-white flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="relative w-full sm:w-80">
+          <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Cari produk di stok gudang..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full bg-slate-50 text-slate-900 pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
+          />
+        </div>
+
         <button
-          onClick={() => setActiveSubTab('inventory')}
-          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition ${
-            activeSubTab === 'inventory'
-              ? 'bg-amber-500 text-slate-950 shadow'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800'
+          onClick={() => setFilterLowStock(!filterLowStock)}
+          className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition border ${
+            filterLowStock
+              ? 'bg-rose-50 text-rose-600 border-rose-200'
+              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
           }`}
         >
-          <Boxes className="w-4 h-4" />
-          <span>Tabel Stok Produk ({stocks.length})</span>
-        </button>
-        <button
-          onClick={() => setActiveSubTab('logs')}
-          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition ${
-            activeSubTab === 'logs'
-              ? 'bg-amber-500 text-slate-950 shadow'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800'
-          }`}
-        >
-          <History className="w-4 h-4" />
-          <span>Riwayat Mutasi Stok ({logs.length})</span>
+          <AlertTriangle className="w-3.5 h-3.5" />
+          <span>Hanya Stok Menipis (≤ 5)</span>
         </button>
       </div>
 
-      {/* INVENTORY TAB */}
-      {activeSubTab === 'inventory' && (
-        <div className="space-y-4">
-          {/* Search and Filters */}
-          <div className="glass-panel p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="relative w-full sm:w-80">
-              <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Cari nama produk..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-slate-900 text-white pl-9 pr-3 py-2 rounded-xl border border-slate-700 text-xs focus:outline-none focus:border-amber-500"
-              />
-            </div>
-
-            <button
-              onClick={() => setFilterLowStock(!filterLowStock)}
-              className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition border ${
-                filterLowStock
-                  ? 'bg-rose-500/20 text-rose-300 border-rose-500/50'
-                  : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-white'
-              }`}
-            >
-              <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
-              <span>Hanya Stok Menipis (≤ 5)</span>
-            </button>
-          </div>
-
-          {/* Table */}
-          <div className="glass-panel rounded-2xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-300">
-                <thead className="bg-slate-900/90 text-xs uppercase text-slate-400 border-b border-slate-800 font-semibold">
-                  <tr>
-                    <th className="px-4 py-3">Nama Produk</th>
-                    <th className="px-4 py-3 text-center">Stok Awal</th>
-                    <th className="px-4 py-3 text-center text-blue-400">Masuk (In)</th>
-                    <th className="px-4 py-3 text-center text-amber-400">Keluar (Out)</th>
-                    <th className="px-4 py-3 text-center">Stok Akhir</th>
-                    <th className="px-4 py-3 text-center">Status</th>
-                    <th className="px-4 py-3 text-center">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800 font-mono">
-                  {filteredStocks.map((s) => {
-                    const isLow = s.stok_akhir <= 5;
-                    return (
-                      <tr key={s.id} className="hover:bg-slate-800/40 transition">
-                        <td className="px-4 py-3 font-sans font-bold text-slate-200">
-                          {s.product_name}
-                        </td>
-                        <td className="px-4 py-3 text-center text-slate-400">
-                          {s.stok_awal}
-                        </td>
-                        <td className="px-4 py-3 text-center text-blue-400 font-semibold">
-                          +{s.stok_in}
-                        </td>
-                        <td className="px-4 py-3 text-center text-amber-400 font-semibold">
-                          -{s.stok_out}
-                        </td>
-                        <td className="px-4 py-3 text-center font-black text-base text-slate-100">
-                          {s.stok_akhir}
-                        </td>
-                        <td className="px-4 py-3 text-center font-sans">
-                          {isLow ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                              Stok Menipis
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                              Aman
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-center font-sans">
-                          <button
-                            onClick={() => {
-                              setRestockProductId(s.product_id);
-                              setShowRestockModal(true);
-                            }}
-                            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-amber-400 font-semibold transition"
-                          >
-                            + Masuk
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* LOGS TAB */}
-      {activeSubTab === 'logs' && (
-        <div className="glass-panel rounded-2xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-300">
-              <thead className="bg-slate-900/90 text-xs uppercase text-slate-400 border-b border-slate-800 font-semibold">
-                <tr>
-                  <th className="px-4 py-3">Tanggal</th>
-                  <th className="px-4 py-3">Produk</th>
-                  <th className="px-4 py-3 text-center">Tipe Mutasi</th>
-                  <th className="px-4 py-3 text-center">Qty</th>
-                  <th className="px-4 py-3">Keterangan</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800">
-                {logs.map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-800/40 transition text-xs">
-                    <td className="px-4 py-3 text-slate-400">{formatDate(log.date)}</td>
-                    <td className="px-4 py-3 font-semibold text-slate-200">{log.product_name}</td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        log.type === 'IN' 
-                          ? 'bg-blue-500/20 text-blue-300' 
-                          : log.type === 'OUT'
-                          ? 'bg-amber-500/20 text-amber-300'
-                          : 'bg-purple-500/20 text-purple-300'
-                      }`}>
-                        {log.type}
-                      </span>
+      {/* Stock Table */}
+      <div className="fintech-card rounded-2xl overflow-hidden bg-white">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs sm:text-sm">
+            <thead className="bg-slate-50 text-slate-500 border-b border-slate-100 uppercase text-[11px] font-bold">
+              <tr>
+                <th className="px-4 py-3">Nama Produk</th>
+                <th className="px-4 py-3 text-center">Awal</th>
+                <th className="px-4 py-3 text-center text-blue-600">Masuk</th>
+                <th className="px-4 py-3 text-center text-amber-600">Keluar</th>
+                <th className="px-4 py-3 text-center font-black">Sisa Akhir</th>
+                <th className="px-4 py-3 text-center">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 font-mono">
+              {filteredStocks.map((s) => {
+                const isLow = s.stok_akhir <= 5;
+                return (
+                  <tr key={s.id} className="hover:bg-slate-50 transition">
+                    <td className="px-4 py-3 font-sans font-bold text-slate-900">
+                      {s.product_name}
+                      {isLow && (
+                        <span className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-50 text-rose-600 border border-rose-100">
+                          Menipis
+                        </span>
+                      )}
                     </td>
-                    <td className="px-4 py-3 text-center font-mono font-bold">
-                      {log.type === 'IN' ? `+${log.qty}` : log.type === 'OUT' ? `-${log.qty}` : log.qty}
+                    <td className="px-4 py-3 text-center text-slate-400">{s.stok_awal}</td>
+                    <td className="px-4 py-3 text-center text-blue-600 font-bold">+{s.stok_in}</td>
+                    <td className="px-4 py-3 text-center text-amber-600 font-bold">-{s.stok_out}</td>
+                    <td className="px-4 py-3 text-center font-black text-sm text-emerald-600">{s.stok_akhir}</td>
+                    <td className="px-4 py-3 text-center font-sans">
+                      <button
+                        onClick={() => {
+                          setRestockProductId(s.product_id);
+                          setShowRestockModal(true);
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-500 hover:text-white text-emerald-700 text-xs font-bold transition"
+                      >
+                        + Masuk
+                      </button>
                     </td>
-                    <td className="px-4 py-3 text-slate-400">{log.notes || '-'}</td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
 
-      {/* RESTOCK MODAL */}
+      {/* Restock Modal */}
       {showRestockModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-white text-base flex items-center gap-2">
-                <ArrowDownLeft className="w-5 h-5 text-blue-400" />
-                <span>Input Barang Masuk (Restock)</span>
-              </h3>
-              <button onClick={() => setShowRestockModal(false)} className="text-slate-400 hover:text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl w-full max-w-md p-6 space-y-4 shadow-2xl border border-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-slate-900 text-base">Input Barang Masuk (Restock)</h3>
+              <button onClick={() => setShowRestockModal(false)} className="p-1 rounded-full text-slate-400 hover:text-slate-700">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleRestockSubmit} className="space-y-3">
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Produk</label>
+                <label className="block text-xs font-bold text-slate-600 mb-1">Pilih Produk</label>
                 <select
                   required
                   value={restockProductId}
                   onChange={(e) => setRestockProductId(e.target.value)}
-                  className="w-full bg-slate-950 text-white px-3 py-2 rounded-xl border border-slate-700 text-xs focus:outline-none focus:border-amber-500"
+                  className="w-full bg-slate-50 text-slate-900 px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500 font-semibold"
                 >
                   <option value="">-- Pilih Produk --</option>
                   {stocks.map((s) => (
@@ -376,37 +285,37 @@ export default function StockOpname() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1">Jumlah Masuk (Qty)</label>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">Jumlah Masuk (Slop)</label>
                   <input
                     type="number"
                     min="1"
                     required
                     value={restockQty}
                     onChange={(e) => setRestockQty(e.target.value)}
-                    placeholder="Contoh: 10"
-                    className="w-full bg-slate-950 text-white px-3 py-2 rounded-xl border border-slate-700 text-xs focus:outline-none focus:border-amber-500 font-mono"
+                    placeholder="Contoh: 20"
+                    className="w-full bg-slate-50 text-slate-900 px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-mono font-bold focus:outline-none focus:border-emerald-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-400 mb-1">Tanggal</label>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">Tanggal</label>
                   <input
                     type="date"
                     required
                     value={restockDate}
                     onChange={(e) => setRestockDate(e.target.value)}
-                    className="w-full bg-slate-950 text-white px-3 py-2 rounded-xl border border-slate-700 text-xs focus:outline-none focus:border-amber-500"
+                    className="w-full bg-slate-50 text-slate-900 px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Keterangan / Supplier (Opsional)</label>
+                <label className="block text-xs font-bold text-slate-600 mb-1">Keterangan / Supplier</label>
                 <input
                   type="text"
                   value={restockNotes}
                   onChange={(e) => setRestockNotes(e.target.value)}
-                  placeholder="Contoh: Pembelian dari Pabrik / Agen"
-                  className="w-full bg-slate-950 text-white px-3 py-2 rounded-xl border border-slate-700 text-xs focus:outline-none focus:border-amber-500"
+                  placeholder="Contoh: Pengiriman Pabrik"
+                  className="w-full bg-slate-50 text-slate-900 px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
@@ -414,15 +323,15 @@ export default function StockOpname() {
                 <button
                   type="button"
                   onClick={() => setShowRestockModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs text-slate-400 hover:text-white"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-lg shadow-blue-600/20"
+                  className="px-5 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold uppercase tracking-wider shadow-md shadow-emerald-500/20"
                 >
-                  Simpan Stok Masuk
+                  Simpan Stok
                 </button>
               </div>
             </form>
@@ -430,28 +339,25 @@ export default function StockOpname() {
         </div>
       )}
 
-      {/* ADJUSTMENT MODAL */}
+      {/* Adjust Modal */}
       {showAdjustModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-white text-base flex items-center gap-2">
-                <SlidersHorizontal className="w-5 h-5 text-indigo-400" />
-                <span>Penyesuaian Fisik Stok (Opname)</span>
-              </h3>
-              <button onClick={() => setShowAdjustModal(false)} className="text-slate-400 hover:text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl w-full max-w-md p-6 space-y-4 shadow-2xl border border-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-slate-900 text-base">Penyesuaian Fisik Stok</h3>
+              <button onClick={() => setShowAdjustModal(false)} className="p-1 rounded-full text-slate-400 hover:text-slate-700">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleAdjustSubmit} className="space-y-3">
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Pilih Produk</label>
+                <label className="block text-xs font-bold text-slate-600 mb-1">Pilih Produk</label>
                 <select
                   required
                   value={adjustProductId}
                   onChange={(e) => setAdjustProductId(e.target.value)}
-                  className="w-full bg-slate-950 text-white px-3 py-2 rounded-xl border border-slate-700 text-xs focus:outline-none focus:border-amber-500"
+                  className="w-full bg-slate-50 text-slate-900 px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500 font-semibold"
                 >
                   <option value="">-- Pilih Produk --</option>
                   {stocks.map((s) => (
@@ -463,26 +369,25 @@ export default function StockOpname() {
               </div>
 
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Jumlah Fisik Aktual (Stok Riil)</label>
+                <label className="block text-xs font-bold text-slate-600 mb-1">Jumlah Fisik Riil di Gudang</label>
                 <input
                   type="number"
                   min="0"
                   required
                   value={adjustNewStock}
                   onChange={(e) => setAdjustNewStock(e.target.value)}
-                  placeholder="Masukkan jumlah fisik di gudang saat ini"
-                  className="w-full bg-slate-950 text-white px-3 py-2 rounded-xl border border-slate-700 text-xs focus:outline-none focus:border-amber-500 font-mono"
+                  className="w-full bg-slate-50 text-slate-900 px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-mono font-bold focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs text-slate-400 mb-1">Alasan Penyesuaian</label>
+                <label className="block text-xs font-bold text-slate-600 mb-1">Alasan Penyesuaian</label>
                 <input
                   type="text"
                   value={adjustNotes}
                   onChange={(e) => setAdjustNotes(e.target.value)}
-                  placeholder="Contoh: Selisih hitung fisik bulanan / rusak"
-                  className="w-full bg-slate-950 text-white px-3 py-2 rounded-xl border border-slate-700 text-xs focus:outline-none focus:border-amber-500"
+                  placeholder="Contoh: Selisih hitung fisik bulanan"
+                  className="w-full bg-slate-50 text-slate-900 px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
@@ -490,15 +395,15 @@ export default function StockOpname() {
                 <button
                   type="button"
                   onClick={() => setShowAdjustModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs text-slate-400 hover:text-white"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/20"
+                  className="px-5 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold uppercase tracking-wider shadow-md shadow-emerald-500/20"
                 >
-                  Update Stok Riil
+                  Update Stok
                 </button>
               </div>
             </form>

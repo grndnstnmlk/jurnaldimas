@@ -5,7 +5,8 @@ import {
   Save, 
   Check, 
   HelpCircle,
-  RefreshCw
+  RefreshCw,
+  SlidersHorizontal
 } from 'lucide-react';
 import { formatRupiah } from '../utils/format';
 import { useRealtime } from '../context/RealtimeContext';
@@ -20,8 +21,7 @@ export default function MatriksHarga() {
   const [searchProduct, setSearchProduct] = useState('');
   const [searchCustomer, setSearchCustomer] = useState('');
 
-  // Editing state for active cell
-  const [editingCell, setEditingCell] = useState(null); // { prodId, custId }
+  const [editingCell, setEditingCell] = useState(null);
   const [editValue, setEditValue] = useState('');
   const [savedBadge, setSavedBadge] = useState(null);
 
@@ -51,7 +51,6 @@ export default function MatriksHarga() {
 
   const handleSaveCell = async (prodId, custId) => {
     const rawNum = parseFloat(editValue) || 0;
-    // Values in matrix are stored in full rupiah (multiplied by 1000 if entered as thousands)
     const finalPrice = rawNum > 0 ? Math.round(rawNum * 1000) : 0;
 
     try {
@@ -91,94 +90,88 @@ export default function MatriksHarga() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-12 text-center text-slate-400">
-        <div className="animate-spin w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-        <p>Memuat matriks harga 120 produk x 26 pelanggan...</p>
+      <div className="max-w-5xl mx-auto px-4 py-12 text-center text-slate-400">
+        <div className="animate-spin w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full mx-auto mb-3"></div>
+        <p className="text-xs font-bold text-slate-600">Memuat matriks harga 120 produk...</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5 space-y-4">
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white">Matriks Harga Khusus Pelanggan</h1>
-          <p className="text-sm text-slate-400">
-            Tabel harga jual tier per pelanggan (Klik pada sel angka untuk mengubah harga secara instan)
+          <h1 className="text-xl font-extrabold text-slate-900">Matriks Harga Pelanggan</h1>
+          <p className="text-xs text-slate-500">
+            Tabel harga tier khusus per pelanggan (Klik sel harga untuk mengubah angka)
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-amber-400 font-semibold bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/30">
-            💡 Masukkan angka ribuan (Contoh: 67 = Rp 67.000)
-          </span>
-        </div>
+        <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 self-start">
+          💡 Ketik ribuan (Contoh: 67 = Rp 67.000)
+        </span>
       </div>
 
-      {/* Filter and Search */}
-      <div className="glass-panel p-4 rounded-2xl grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Filters */}
+      <div className="fintech-card p-3.5 bg-white grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="relative">
-          <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
           <input
             type="text"
             placeholder="Cari baris produk (120 produk)..."
             value={searchProduct}
             onChange={(e) => setSearchProduct(e.target.value)}
-            className="w-full bg-slate-900 text-white pl-9 pr-3 py-2 rounded-xl border border-slate-700 text-xs focus:outline-none focus:border-amber-500"
+            className="w-full bg-slate-50 text-slate-900 pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
           />
         </div>
         <div className="relative">
-          <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Filter kolom pelanggan (26 pelanggan)..."
+            placeholder="Filter kolom pelanggan..."
             value={searchCustomer}
             onChange={(e) => setSearchCustomer(e.target.value)}
-            className="w-full bg-slate-900 text-white pl-9 pr-3 py-2 rounded-xl border border-slate-700 text-xs focus:outline-none focus:border-amber-500"
+            className="w-full bg-slate-50 text-slate-900 pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:border-emerald-500"
           />
         </div>
       </div>
 
-      {/* Matrix Interactive Table */}
-      <div className="glass-panel rounded-2xl overflow-hidden border border-slate-800">
-        <div className="overflow-x-auto max-h-[680px]">
+      {/* Matrix Table */}
+      <div className="fintech-card rounded-2xl overflow-hidden bg-white">
+        <div className="overflow-x-auto max-h-[640px]">
           <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-slate-900 sticky top-0 z-20 shadow-md">
-              <tr className="border-b border-slate-800 text-slate-300 uppercase">
-                <th className="px-4 py-3 sticky left-0 z-30 bg-slate-900 min-w-[200px] border-r border-slate-800 font-bold">
+            <thead className="bg-slate-50 sticky top-0 z-20 border-b border-slate-200">
+              <tr className="text-slate-500 uppercase">
+                <th className="px-4 py-3 sticky left-0 z-30 bg-slate-50 min-w-[180px] border-r border-slate-200 font-bold">
                   Nama Produk
                 </th>
-                <th className="px-3 py-3 text-right bg-slate-900 min-w-[90px] border-r border-slate-800 text-blue-400 font-bold">
-                  Modal (HPP)
+                <th className="px-3 py-3 text-right bg-slate-50 min-w-[80px] border-r border-slate-200 text-slate-600 font-bold">
+                  HPP
                 </th>
                 {filteredCustomers.map((c) => (
                   <th 
                     key={c.id} 
-                    className="px-3 py-3 text-center min-w-[85px] border-r border-slate-800 font-bold"
+                    className="px-2.5 py-3 text-center min-w-[75px] border-r border-slate-200 font-bold"
                     title={c.name}
                   >
-                    <div className="text-amber-400 font-mono text-sm">{c.code}</div>
-                    <div className="text-[10px] text-slate-400 truncate max-w-[75px]">{c.name}</div>
+                    <div className="text-emerald-700 font-mono text-xs font-black">{c.code}</div>
+                    <div className="text-[9px] text-slate-400 truncate max-w-[65px] font-sans">{c.name}</div>
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800 font-mono">
+            <tbody className="divide-y divide-slate-100 font-mono">
               {filteredProducts.map((p) => (
-                <tr key={p.id} className="hover:bg-slate-800/50 transition">
-                  
-                  {/* Sticky Product Column */}
-                  <td className="px-4 py-2.5 font-sans font-bold text-slate-200 sticky left-0 z-10 bg-slate-950/90 border-r border-slate-800">
+                <tr key={p.id} className="hover:bg-slate-50 transition">
+                  <td className="px-4 py-2 font-sans font-bold text-slate-800 sticky left-0 z-10 bg-white border-r border-slate-100">
                     {p.name}
                   </td>
 
-                  {/* Modal Price Column */}
-                  <td className="px-3 py-2.5 text-right text-slate-400 border-r border-slate-800 bg-slate-950/40 font-semibold">
+                  <td className="px-3 py-2 text-right text-slate-400 border-r border-slate-100 font-semibold bg-slate-50/50">
                     {p.modal_price ? (p.modal_price / 1000).toLocaleString() : '0'}k
                   </td>
 
-                  {/* Customer Specific Price Cells */}
                   {filteredCustomers.map((c) => {
                     const key = `${p.id}_${c.id}`;
                     const price = matrix[key];
@@ -189,37 +182,35 @@ export default function MatriksHarga() {
                       <td
                         key={c.id}
                         onClick={() => !isEditing && handleCellClick(p.id, c.id, price)}
-                        className={`px-2 py-1.5 text-center border-r border-slate-800 cursor-pointer transition ${
+                        className={`px-1.5 py-1 text-center border-r border-slate-100 cursor-pointer transition ${
                           isEditing
-                            ? 'bg-amber-500/20'
+                            ? 'bg-emerald-50'
                             : isJustSaved
-                            ? 'bg-emerald-500/30'
+                            ? 'bg-emerald-100'
                             : price > 0
-                            ? 'hover:bg-slate-800 text-slate-100'
-                            : 'text-slate-600 hover:bg-slate-800/40'
+                            ? 'hover:bg-emerald-50/40 text-slate-900'
+                            : 'text-slate-300 hover:bg-slate-50'
                         }`}
                       >
                         {isEditing ? (
-                          <div className="flex items-center justify-center gap-1">
-                            <input
-                              type="number"
-                              autoFocus
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              onBlur={() => handleSaveCell(p.id, c.id)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleSaveCell(p.id, c.id);
-                                if (e.key === 'Escape') setEditingCell(null);
-                              }}
-                              className="w-16 bg-slate-900 border border-amber-500 text-amber-300 font-bold px-1.5 py-0.5 rounded text-center text-xs focus:outline-none"
-                            />
-                          </div>
+                          <input
+                            type="number"
+                            autoFocus
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onBlur={() => handleSaveCell(p.id, c.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveCell(p.id, c.id);
+                              if (e.key === 'Escape') setEditingCell(null);
+                            }}
+                            className="w-14 bg-white border border-emerald-500 text-emerald-700 font-bold px-1 py-0.5 rounded text-center text-xs focus:outline-none"
+                          />
                         ) : (
-                          <div className="font-semibold">
+                          <div className="font-bold">
                             {price > 0 ? (
-                              <span className="text-emerald-400">{(price / 1000).toLocaleString()}k</span>
+                              <span className="text-emerald-600">{(price / 1000).toLocaleString()}k</span>
                             ) : (
-                              <span className="text-slate-600">-</span>
+                              <span className="text-slate-300">-</span>
                             )}
                           </div>
                         )}
