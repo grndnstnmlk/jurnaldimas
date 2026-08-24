@@ -398,6 +398,97 @@ app.post('/api/pricing-matrix/update-cell', (req, res) => {
   }
 });
 
+// Batch update prices for a specific customer
+app.post('/api/pricing-matrix/batch-update-customer', (req, res) => {
+  try {
+    const { customer_id, prices } = req.body;
+    if (!customer_id || !Array.isArray(prices)) {
+      return res.status(400).json({ error: 'customer_id and prices array required' });
+    }
+
+    const upsertStmt = db.prepare(`
+      INSERT INTO pricing_matrix (product_id, customer_id, sell_price)
+      VALUES (?, ?, ?)
+      ON CONFLICT(product_id, customer_id) DO UPDATE SET sell_price = excluded.sell_price
+    `);
+
+    const updateMany = db.transaction((list) => {
+      for (const item of list) {
+        if (item.product_id && item.sell_price >= 0) {
+          upsertStmt.run(item.product_id, customer_id, Math.round(item.sell_price));
+        }
+      }
+    });
+
+    updateMany(prices);
+    broadcast('PRICING_BATCH_UPDATED', { customer_id, count: prices.length });
+    res.json({ success: true, message: `Berhasil memperbarui ${prices.length} harga produk` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Copy all pricing from a source customer to target customer
+app.post('/api/pricing-matrix/copy-customer-prices', (req, res) => {
+  try {
+    const { source_customer_id, target_customer_id } = req.body;
+    if (!source_customer_id || !target_customer_id) {
+      return res.status(400).json({ error: 'source_customer_id and target_customer_id required' });
+    }
+
+    const sourcePrices = db.prepare(`
+      SELECT product_id, sell_price FROM pricing_matrix WHERE customer_id = ?
+    `).all(source_customer_id);
+
+    const upsertStmt = db.prepare(`
+      INSERT INTO pricing_matrix (product_id, customer_id, sell_price)
+      VALUES (?, ?, ?)
+      ON CONFLICT(product_id, customer_id) DO UPDATE SET sell_price = excluded.sell_price
+    `);
+
+    db.transaction(() => {
+      for (const sp of sourcePrices) {
+        upsertStmt.run(sp.product_id, target_customer_id, sp.sell_price);
+      }
+    })();
+
+    broadcast('PRICING_COPIED', { source_customer_id, target_customer_id, count: sourcePrices.length });
+    res.json({ success: true, count: sourcePrices.length, message: `Berhasil menyalin ${sourcePrices.length} harga khusus` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Apply default markup / margin percentage from HPP for a customer
+app.post('/api/pricing-matrix/apply-margin-customer', (req, res) => {
+  try {
+    const { customer_id, margin_percent } = req.body;
+    if (!customer_id) return res.status(400).json({ error: 'customer_id required' });
+
+    const marginFactor = 1 + (Number(margin_percent) || 0) / 100;
+    const products = db.prepare('SELECT id, modal_price, default_price FROM products WHERE is_active = 1').all();
+
+    const upsertStmt = db.prepare(`
+      INSERT INTO pricing_matrix (product_id, customer_id, sell_price)
+      VALUES (?, ?, ?)
+      ON CONFLICT(product_id, customer_id) DO UPDATE SET sell_price = excluded.sell_price
+    `);
+
+    db.transaction(() => {
+      for (const p of products) {
+        const basePrice = p.modal_price || p.default_price || 0;
+        const calculatedPrice = Math.round((basePrice * marginFactor) / 500) * 500;
+        upsertStmt.run(p.id, customer_id, calculatedPrice);
+      }
+    })();
+
+    broadcast('PRICING_MARGIN_APPLIED', { customer_id, margin_percent });
+    res.json({ success: true, count: products.length, message: `Berhasil menerapkan margin +${margin_percent}% pada ${products.length} produk` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ==========================================
 // 5. TRANSACTIONS & CASHIER NOTA API
 // ==========================================
