@@ -86,7 +86,18 @@ function initDb() {
       FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE,
       FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
   `);
+
+  // Initialize default access code if not set
+  const defaultCode = process.env.ACCESS_CODE || '123456';
+  db.prepare(`
+    INSERT OR IGNORE INTO settings (key, value) VALUES ('access_code', ?)
+  `).run(defaultCode);
 
   // Check if seeding is needed
   const customerCount = db.prepare('SELECT COUNT(*) as count FROM customers').get().count;

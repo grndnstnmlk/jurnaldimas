@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { RealtimeProvider } from './context/RealtimeContext';
 import Navbar from './components/Navbar';
+import LockScreen from './components/LockScreen';
 import Dashboard from './pages/Dashboard';
 import KasirPOS from './pages/KasirPOS';
 import RiwayatNota from './pages/RiwayatNota';
@@ -9,8 +11,22 @@ import LabaRugi from './pages/LabaRugi';
 import MatriksHarga from './pages/MatriksHarga';
 import MasterData from './pages/MasterData';
 
-export default function App() {
+function MainApp() {
+  const { isAuthenticated, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('kasir');
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-400">
+        <div className="animate-spin w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full mb-3"></div>
+        <p className="text-xs font-semibold uppercase tracking-wider">Memeriksa Akses Sistem...</p>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LockScreen />;
+  }
 
   return (
     <RealtimeProvider>
@@ -44,5 +60,13 @@ export default function App() {
 
       </div>
     </RealtimeProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <MainApp />
+    </AuthProvider>
   );
 }

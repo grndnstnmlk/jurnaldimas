@@ -33,6 +33,12 @@ Aplikasi Web & Mobile PWA terpadu untuk digitalisasi sistem penjualan grosir, ka
 - **📱 Mobile PWA Lite App**:
   - Dapat diinstall di layar utama smartphone Android / iOS (*Add to Home Screen*) menjadi aplikasi mandiri yang ringan dan cepat.
 
+- **🔒 Sistem Proteksi & Kode Akses Master (PIN)**:
+  - Layar kunci aman dengan dukungan keypad numerik cepat di HP.
+  - Seluruh endpoint data dilindungi token otentikasi.
+  - Fitur ganti kode akses / PIN rahasia kapan saja langsung dari aplikasi.
+  - Kode akses default: `123456`.
+
 ---
 
 ## 🚀 Cara Menjalankan Aplikasi

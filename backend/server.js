@@ -33,6 +33,84 @@ wss.on('connection', (ws) => {
   ws.send(JSON.stringify({ event: 'CONNECTED', message: 'Connected to Master Cigarettes Realtime Server' }));
 });
 
+const crypto = require('crypto');
+
+function getStoredAccessCode() {
+  const row = db.prepare("SELECT value FROM settings WHERE key = 'access_code'").get();
+  return row ? row.value : (process.env.ACCESS_CODE || '123456');
+}
+
+function generateToken(code) {
+  return crypto.createHash('sha256').update(code + '_master_pos_salt').digest('hex');
+}
+
+// ==========================================
+// AUTHENTICATION & ACCESS CONTROL API
+// ==========================================
+app.post('/api/auth/login', (req, res) => {
+  try {
+    const { code } = req.body;
+    const currentCode = getStoredAccessCode();
+    if (code && String(code).trim() === String(currentCode).trim()) {
+      const token = generateToken(currentCode);
+      return res.json({ success: true, token });
+    }
+    return res.status(401).json({ error: 'Kode akses tidak valid. Silakan coba lagi.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/verify', (req, res) => {
+  try {
+    const { token } = req.body;
+    const currentCode = getStoredAccessCode();
+    const validToken = generateToken(currentCode);
+    if (token === validToken) {
+      return res.json({ success: true, valid: true });
+    }
+    return res.status(401).json({ success: false, valid: false });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/change-code', (req, res) => {
+  try {
+    const { current_code, new_code } = req.body;
+    const stored = getStoredAccessCode();
+    if (String(current_code).trim() !== String(stored).trim()) {
+      return res.status(400).json({ error: 'Kode akses lama tidak sesuai.' });
+    }
+    if (!new_code || String(new_code).trim().length < 4) {
+      return res.status(400).json({ error: 'Kode akses baru minimal 4 karakter/angka.' });
+    }
+
+    const updated = String(new_code).trim();
+    db.prepare("UPDATE settings SET value = ? WHERE key = 'access_code'").run(updated);
+    const newToken = generateToken(updated);
+    return res.json({ success: true, token: newToken, message: 'Kode akses berhasil diubah.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Middleware for protecting data APIs
+app.use('/api', (req, res, next) => {
+  if (req.path.startsWith('/auth/')) {
+    return next();
+  }
+  const authHeader = req.headers['authorization'];
+  const token = authHeader ? authHeader.replace('Bearer ', '') : req.query.token;
+  const currentCode = getStoredAccessCode();
+  const validToken = generateToken(currentCode);
+
+  if (token === validToken) {
+    return next();
+  }
+  return res.status(401).json({ error: 'Akses ditolak. Silakan masukkan kode akses.' });
+});
+
 // ==========================================
 // 1. DASHBOARD & STATS API
 // ==========================================

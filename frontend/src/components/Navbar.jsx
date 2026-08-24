@@ -12,14 +12,22 @@ import {
   WifiOff, 
   Smartphone,
   Menu,
-  X
+  X,
+  Lock,
+  KeyRound,
+  LogOut,
+  ShieldCheck
 } from 'lucide-react';
 import { useRealtime } from '../context/RealtimeContext';
+import { useAuth } from '../context/AuthContext';
+import ChangePinModal from './ChangePinModal';
 
 export default function Navbar({ activeTab, setActiveTab }) {
   const { isConnected } = useRealtime();
+  const { logout } = useAuth();
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showChangePin, setShowChangePin] = useState(false);
 
   useEffect(() => {
     window.addEventListener('beforeinstallprompt', (e) => {
@@ -57,13 +65,13 @@ export default function Navbar({ activeTab, setActiveTab }) {
           
           {/* Logo & Company Name */}
           <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab('dashboard')}>
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-red-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20">
               <span className="font-black text-slate-950 text-xl tracking-wider">MC</span>
             </div>
             <div>
               <div className="font-bold text-base sm:text-lg text-white leading-tight flex items-center gap-2">
                 CV. MASTER CIGARETTES
-                <span className="hidden sm:inline-block text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                <span className="hidden sm:inline-block text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30">
                   REALTIME
                 </span>
               </div>
@@ -80,7 +88,7 @@ export default function Navbar({ activeTab, setActiveTab }) {
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                  className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
                     isActive
                       ? item.highlight 
                         ? 'bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/25'
@@ -88,15 +96,15 @@ export default function Navbar({ activeTab, setActiveTab }) {
                       : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-3.5 h-3.5" />
                   <span>{item.label}</span>
                 </button>
               );
             })}
           </nav>
 
-          {/* Actions: Live Sync Status, PWA Install & Excel Export */}
-          <div className="hidden sm:flex items-center space-x-3">
+          {/* Actions: Live Sync Status, Ganti PIN, Lock & Excel */}
+          <div className="hidden sm:flex items-center space-x-2">
             {/* Live Indicator */}
             <div 
               title={isConnected ? 'Terkoneksi Real-time' : 'Menghubungkan kembali...'}
@@ -110,36 +118,41 @@ export default function Navbar({ activeTab, setActiveTab }) {
               <span>{isConnected ? 'LIVE' : 'OFFLINE'}</span>
             </div>
 
-            {/* Download Excel */}
-            <a
-              href="/api/export/excel"
-              download="JURNAL_KEUANGAN_MASTER_CIGARETTES.xlsx"
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition"
-              title="Ekspor Seluruh Data ke Excel"
-            >
-              <Download className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Ekspor Excel</span>
-            </a>
-
-            {/* Install PWA Button */}
+            {/* Change PIN Button */}
             <button
-              onClick={handleInstallPWA}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 text-xs font-medium border border-indigo-500/30 transition"
-              title="Pasang aplikasi di Handphone / Desktop"
+              onClick={() => setShowChangePin(true)}
+              className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold border border-slate-700 transition"
+              title="Ganti Kode Akses / PIN Master"
             >
-              <Smartphone className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Install App</span>
+              <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+              <span>PIN</span>
+            </button>
+
+            {/* Lock / Logout Button */}
+            <button
+              onClick={logout}
+              className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold border border-rose-500/30 transition"
+              title="Kunci Aplikasi / Keluar"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>Kunci</span>
             </button>
           </div>
 
           {/* Mobile Menu Button */}
           <div className="flex lg:hidden items-center space-x-2">
-            <div className={`w-2.5 h-2.5 rounded-full ${isConnected ? 'bg-emerald-500' : 'bg-rose-500 animate-ping'}`} />
+            <button
+              onClick={logout}
+              className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/20"
+              title="Kunci Aplikasi"
+            >
+              <Lock className="w-4 h-4" />
+            </button>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 rounded-lg bg-slate-800 text-slate-300 hover:text-white"
             >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
 
@@ -159,39 +172,46 @@ export default function Navbar({ activeTab, setActiveTab }) {
                   setActiveTab(item.id);
                   setMobileMenuOpen(false);
                 }}
-                className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium ${
+                className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg text-sm font-medium ${
                   isActive
                     ? 'bg-amber-500 text-slate-950 font-bold'
                     : 'text-slate-300 hover:bg-slate-800'
                 }`}
               >
-                <Icon className="w-5 h-5" />
+                <Icon className="w-4 h-4" />
                 <span>{item.label}</span>
               </button>
             );
           })}
 
-          <div className="pt-3 border-t border-slate-800 flex flex-col gap-2">
-            <a
-              href="/api/export/excel"
-              download="JURNAL_KEUANGAN_MASTER_CIGARETTES.xlsx"
-              className="flex items-center justify-center space-x-2 py-2.5 rounded-lg bg-slate-800 text-slate-200 text-xs font-semibold"
-            >
-              <Download className="w-4 h-4 text-emerald-400" />
-              <span>Unduh File Excel</span>
-            </a>
+          <div className="pt-3 border-t border-slate-800 grid grid-cols-2 gap-2">
             <button
               onClick={() => {
-                handleInstallPWA();
+                setShowChangePin(true);
                 setMobileMenuOpen(false);
               }}
-              className="flex items-center justify-center space-x-2 py-2.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold"
+              className="flex items-center justify-center space-x-1.5 py-2.5 rounded-lg bg-slate-800 text-amber-400 text-xs font-bold"
             >
-              <Smartphone className="w-4 h-4" />
-              <span>Pasang di Layar Utama HP</span>
+              <KeyRound className="w-4 h-4" />
+              <span>Ganti PIN</span>
+            </button>
+            <button
+              onClick={() => {
+                logout();
+                setMobileMenuOpen(false);
+              }}
+              className="flex items-center justify-center space-x-1.5 py-2.5 rounded-lg bg-rose-600/20 text-rose-300 text-xs font-bold border border-rose-500/30"
+            >
+              <Lock className="w-4 h-4" />
+              <span>Kunci Aplikasi</span>
             </button>
           </div>
         </div>
+      )}
+
+      {/* Change PIN Modal */}
+      {showChangePin && (
+        <ChangePinModal onClose={() => setShowChangePin(false)} />
       )}
     </header>
   );
