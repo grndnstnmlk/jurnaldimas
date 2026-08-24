@@ -17,9 +17,9 @@ function MainApp() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-400">
-        <div className="animate-spin w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full mb-3"></div>
-        <p className="text-xs font-semibold uppercase tracking-wider">Memeriksa Akses Sistem...</p>
+      <div className="min-h-screen bg-[#f9faf9] flex flex-col items-center justify-center text-[#5a585a]">
+        <div className="animate-spin w-8 h-8 border-4 border-[#0f0f0f] border-t-transparent rounded-full mb-3"></div>
+        <p className="text-xs font-bold uppercase tracking-wider text-[#0f0f0f]">Memeriksa Akses Sistem...</p>
       </div>
     );
   }
@@ -30,7 +30,7 @@ function MainApp() {
 
   return (
     <RealtimeProvider>
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-amber-500 selection:text-slate-950">
+      <div className="min-h-screen bg-[#f9faf9] text-[#0f0f0f] flex flex-col selection:bg-[#05c92f] selection:text-[#0f0f0f]">
         
         {/* Navigation Bar */}
         <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -48,10 +48,10 @@ function MainApp() {
 
         {/* Bottom Mobile Sticky POS Button (Only when not on kasir tab) */}
         {activeTab !== 'kasir' && (
-          <div className="fixed bottom-4 right-4 z-40 lg:hidden">
+          <div className="fixed bottom-5 right-5 z-40 lg:hidden">
             <button
               onClick={() => setActiveTab('kasir')}
-              className="px-4 py-3 rounded-full bg-amber-500 text-slate-950 font-black text-xs uppercase tracking-wider shadow-2xl shadow-amber-500/50 flex items-center gap-2 border-2 border-slate-950 active:scale-95 transition"
+              className="px-5 py-3 rounded-[35px] ctrl-btn-lime flex items-center gap-2 shadow-xl border border-[#0f0f0f] active:scale-95 transition"
             >
               <span>+ Kasir / Nota</span>
             </button>
