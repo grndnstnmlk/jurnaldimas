@@ -290,7 +290,6 @@ export default function MatriksHarga() {
               </div>
               <div className="text-left sm:text-right text-xs text-slate-500">
                 <div>Berlaku per: <span className="font-bold text-slate-700">{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span></div>
-                <div className="text-[10px] text-emerald-700 font-bold mt-0.5">✅ HPP Rahasia Aman Tersembunyi</div>
               </div>
             </div>
 
