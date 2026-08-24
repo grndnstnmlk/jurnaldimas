@@ -44,6 +44,11 @@ function generateToken(code) {
   return crypto.createHash('sha256').update(code + '_master_pos_salt').digest('hex');
 }
 
+// Public Health Check for Keep-Alive Ping (UptimeRobot)
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', time: new Date().toISOString() });
+});
+
 // ==========================================
 // AUTHENTICATION & ACCESS CONTROL API
 // ==========================================
@@ -97,7 +102,7 @@ app.post('/api/auth/change-code', (req, res) => {
 
 // Middleware for protecting data APIs
 app.use('/api', (req, res, next) => {
-  if (req.path.startsWith('/auth/')) {
+  if (req.path.startsWith('/auth/') || req.path === '/health') {
     return next();
   }
   const authHeader = req.headers['authorization'];
