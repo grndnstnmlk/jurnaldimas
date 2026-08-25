@@ -243,16 +243,46 @@ app.post('/api/products', (req, res) => {
 
 app.put('/api/products/:id', (req, res) => {
   try {
-    const { name, category, modal_price, default_price, is_active } = req.body;
+    const { name, category, modal_price, default_price, is_active, stock, initial_stock } = req.body;
     const prodId = req.params.id;
 
-    db.prepare(`
-      UPDATE products 
-      SET name = ?, category = ?, modal_price = ?, default_price = ?, is_active = ?
-      WHERE id = ?
-    `).run(name, category, modal_price, default_price, is_active ?? 1, prodId);
+    const tx = db.transaction(() => {
+      db.prepare(`
+        UPDATE products 
+        SET name = ?, category = ?, modal_price = ?, default_price = ?, is_active = ?
+        WHERE id = ?
+      `).run(name, category, modal_price, default_price, is_active ?? 1, prodId);
 
+      const targetStock = stock !== undefined ? stock : initial_stock;
+      if (targetStock !== undefined && targetStock !== null && targetStock !== '') {
+        const numStock = Math.max(0, Number(targetStock));
+        const currentStock = db.prepare('SELECT stok_akhir FROM stocks WHERE product_id = ?').get(prodId);
+        if (currentStock) {
+          if (currentStock.stok_akhir !== numStock) {
+            const diff = numStock - currentStock.stok_akhir;
+            db.prepare(`
+              UPDATE stocks 
+              SET stok_akhir = ?, updated_at = CURRENT_TIMESTAMP
+              WHERE product_id = ?
+            `).run(numStock, prodId);
+
+            db.prepare(`
+              INSERT INTO stock_logs (product_id, type, qty, notes, date)
+              VALUES (?, 'ADJUSTMENT', ?, ?, ?)
+            `).run(prodId, diff, `Edit produk & stok (${diff >= 0 ? '+' : ''}${diff})`, new Date().toISOString().split('T')[0]);
+          }
+        } else {
+          db.prepare(`
+            INSERT INTO stocks (product_id, stok_awal, stok_in, stok_out, stok_akhir)
+            VALUES (?, ?, 0, 0, ?)
+          `).run(prodId, numStock, numStock);
+        }
+      }
+    });
+
+    tx();
     broadcast('PRODUCT_UPDATED', { id: prodId, name });
+    broadcast('STOCK_UPDATED', { product_id: prodId, type: 'EDIT' });
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -721,33 +751,74 @@ app.post('/api/stocks/in', (req, res) => {
   }
 });
 
-// Stock Adjustment (Penyesuaian Fisik / Stok Awal)
+// Stock Adjustment (Penyesuaian Fisik / Stok Awal / Kosongkan)
 app.post('/api/stocks/adjust', (req, res) => {
   try {
     const { product_id, new_actual_stock, notes } = req.body;
+    if (product_id === undefined || new_actual_stock === undefined || new_actual_stock === null || new_actual_stock === '') {
+      return res.status(400).json({ error: 'Produk dan stok fisik valid wajib diisi' });
+    }
+
     const today = new Date().toISOString().split('T')[0];
+    const targetStock = Math.max(0, Number(new_actual_stock));
 
     const current = db.prepare('SELECT stok_akhir FROM stocks WHERE product_id = ?').get(product_id);
     if (!current) return res.status(404).json({ error: 'Stok produk tidak ditemukan' });
 
-    const diff = new_actual_stock - current.stok_akhir;
+    const diff = targetStock - current.stok_akhir;
 
     const tx = db.transaction(() => {
       db.prepare(`
         UPDATE stocks 
         SET stok_akhir = ?, updated_at = CURRENT_TIMESTAMP
         WHERE product_id = ?
-      `).run(new_actual_stock, product_id);
+      `).run(targetStock, product_id);
 
       db.prepare(`
         INSERT INTO stock_logs (product_id, type, qty, notes, date)
         VALUES (?, 'ADJUSTMENT', ?, ?, ?)
-      `).run(product_id, diff, notes || `Penyesuaian stok (${diff >= 0 ? '+' : ''}${diff})`, today);
+      `).run(
+        product_id, 
+        diff, 
+        notes || (targetStock === 0 ? 'Kosongkan Stok (0)' : `Penyesuaian stok (${diff >= 0 ? '+' : ''}${diff})`), 
+        today
+      );
     });
 
     tx();
-    broadcast('STOCK_UPDATED', { product_id, new_actual_stock, type: 'ADJUSTMENT' });
-    res.json({ success: true });
+    broadcast('STOCK_UPDATED', { product_id, new_actual_stock: targetStock, type: 'ADJUSTMENT' });
+    res.json({ success: true, new_stock: targetStock });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Kosongkan Seluruh Stok Semua Produk
+app.post('/api/stocks/clear-all', (req, res) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const { notes } = req.body || {};
+
+    const tx = db.transaction(() => {
+      const positiveStocks = db.prepare('SELECT product_id, stok_akhir FROM stocks WHERE stok_akhir > 0').all();
+      const insertLog = db.prepare(`
+        INSERT INTO stock_logs (product_id, type, qty, notes, date)
+        VALUES (?, 'ADJUSTMENT', ?, ?, ?)
+      `);
+
+      for (const s of positiveStocks) {
+        insertLog.run(s.product_id, -s.stok_akhir, notes || 'Kosongkan Semua Stok Gudang', today);
+      }
+
+      db.prepare(`
+        UPDATE stocks 
+        SET stok_akhir = 0, updated_at = CURRENT_TIMESTAMP
+      `).run();
+    });
+
+    tx();
+    broadcast('STOCK_UPDATED', { type: 'CLEAR_ALL' });
+    res.json({ success: true, message: 'Semua stok berhasil dikosongkan' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

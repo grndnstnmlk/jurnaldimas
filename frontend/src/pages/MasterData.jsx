@@ -357,6 +357,30 @@ export default function MasterData() {
                 />
               </div>
 
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-600">
+                    {editingProduct ? 'Stok Fisik Saat Ini (Slop)' : 'Stok Awal (Slop)'}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setProdForm({ ...prodForm, initial_stock: 0 })}
+                    className="text-[11px] font-bold text-rose-600 hover:text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200 transition"
+                  >
+                    Set 0 (Kosongkan)
+                  </button>
+                </div>
+                <input
+                  type="number"
+                  min="0"
+                  required
+                  value={prodForm.initial_stock}
+                  onChange={(e) => setProdForm({ ...prodForm, initial_stock: Math.max(0, Number(e.target.value)) })}
+                  placeholder="0"
+                  className="w-full bg-slate-50 text-slate-900 px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-mono font-bold focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
               <div className="pt-3 flex justify-end gap-2">
                 <button
                   type="button"

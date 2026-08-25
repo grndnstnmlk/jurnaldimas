@@ -55,11 +55,15 @@ Aplikasi ini dibangun menggunakan arsitektur modern Node.js + SQLite/REST API ya
    - Buka rincian item barang pada setiap nota.
    - Batalkan transaksi dengan **pengembalian stok otomatis**.
 
-4. **📦 Stock Opname**:
+4. **📦 Stock Opname & Manajemen Stok Gudang**:
    - Pantau Stok Awal, Barang Masuk, Barang Keluar, dan Sisa Stok Fisik.
-   - Input **Barang Masuk (Restock)** dengan keterangan supplier.
-   - Menu **Penyesuaian Fisik (Opname)** untuk sinkronisasi stok riil.
-   - Riwayat mutasi log stok.
+   - **Tombol Aksi Cepat per Produk**:
+     - **`+ Masuk`**: Input restock / kulakan barang masuk dengan tanggal & keterangan.
+     - **`Edit`**: Penyesuaian stok riil langsung dengan tombol shortcut (+1, +5, +10, +50) dan indikator selisih.
+     - **`Kosongkan`**: Reset stok produk tertentu langsung menjadi **0 Slop**.
+   - **`Kosongkan Semua Stok`**: Fitur reset total untuk mengosongkan seluruh stok gudang (dengan konfirmasi keamanan ganda).
+   - **Edit Stok di Master Data**: Ubah sisa stok atau stok awal langsung saat membuat/mengedit data produk.
+   - **Riwayat Mutasi & Opname**: Log lengkap semua perubahan stok (IN, OUT, ADJUSTMENT, RESET) beserta tanggal dan catatan audit.
 
 5. **📈 Laporan Laba - Rugi**:
    - Rincian laba per produk dan per pelanggan sesuai rumus Excel `Laba-Rugi`.
