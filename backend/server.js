@@ -240,23 +240,28 @@ app.post('/api/auth/google', (req, res) => {
     }
 
     const cleanEmail = email.trim().toLowerCase();
+    const isHostEmail = cleanEmail === 'grndnstnmlk@gmail.com' || cleanEmail === 'admin@masterpos.com';
     let user = db.prepare('SELECT * FROM users WHERE email = ?').get(cleanEmail);
 
     if (user) {
       if (!user.is_active) {
         return res.status(403).json({ error: 'Akun Anda sedang dinonaktifkan oleh Administrator.' });
       }
-      // Update google ID & avatar
+      const updatedRole = isHostEmail ? 'admin' : user.role;
+      // Update google ID & avatar & ensure host email has admin role
       db.prepare(`
         UPDATE users 
         SET google_id = COALESCE(google_id, ?), 
             avatar_url = COALESCE(NULLIF(?, ''), avatar_url),
+            role = ?,
             is_verified = 1,
             last_login = CURRENT_TIMESTAMP
         WHERE id = ?
-      `).run(googleId, avatar, user.id);
-      // Register new user via Google (strictly 'sales' role for public signups)
-      const role = 'sales';
+      `).run(googleId, avatar, updatedRole, user.id);
+      user.role = updatedRole;
+    } else {
+      // Register new user via Google: only the host email gets admin, everyone else is sales
+      const role = isHostEmail ? 'admin' : 'sales';
 
       const insertRes = db.prepare(`
         INSERT INTO users (name, email, role, auth_provider, google_id, avatar_url, is_verified, is_active, last_login)
