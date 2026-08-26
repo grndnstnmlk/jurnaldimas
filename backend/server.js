@@ -126,9 +126,8 @@ app.post('/api/auth/register', (req, res) => {
       return res.status(400).json({ error: 'Email ini sudah terdaftar. Silakan login.' });
     }
 
-    // Determine role: if role requested is admin and no other users exist, grant admin; otherwise default to sales or chosen
-    const userCount = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
-    const finalRole = (userCount === 0 || role === 'admin') ? 'admin' : (role || 'sales');
+    // Public registration is strictly for 'sales' accounts only (Admin is exclusively for the host)
+    const finalRole = 'sales';
     const pwdHash = hashPassword(password);
     const verificationCode = String(Math.floor(100000 + Math.random() * 900000));
 
@@ -256,11 +255,8 @@ app.post('/api/auth/google', (req, res) => {
             last_login = CURRENT_TIMESTAMP
         WHERE id = ?
       `).run(googleId, avatar, user.id);
-    } else {
-      // Register new user via Google
-      // If user email matches admin / host email pattern or first user, assign admin, else sales
-      const userCount = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
-      const role = (userCount === 0 || cleanEmail.includes('admin') || cleanEmail.includes('host')) ? 'admin' : 'sales';
+      // Register new user via Google (strictly 'sales' role for public signups)
+      const role = 'sales';
 
       const insertRes = db.prepare(`
         INSERT INTO users (name, email, role, auth_provider, google_id, avatar_url, is_verified, is_active, last_login)
