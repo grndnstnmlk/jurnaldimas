@@ -1,16 +1,72 @@
-const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 
+// Support both node:sqlite (Node 22.5+) and better-sqlite3
+let db;
 const dbPath = path.join(__dirname, 'database.sqlite');
-const db = new Database(dbPath);
 
-// Enable foreign keys & WAL mode for high concurrency
-db.pragma('foreign_keys = ON');
-db.pragma('journal_mode = WAL');
+try {
+  const { DatabaseSync } = require('node:sqlite');
+  const rawDb = new DatabaseSync(dbPath);
+  rawDb.exec('PRAGMA foreign_keys = ON');
+  rawDb.exec('PRAGMA journal_mode = WAL');
+
+  // Wrap to match standard API
+  db = {
+    exec: (sql) => rawDb.exec(sql),
+    prepare: (sql) => {
+      const stmt = rawDb.prepare(sql);
+      return {
+        run: (...args) => stmt.run(...args),
+        get: (...args) => stmt.get(...args),
+        all: (...args) => stmt.all(...args)
+      };
+    },
+    transaction: (fn) => (...args) => {
+      rawDb.exec('BEGIN TRANSACTION');
+      try {
+        const result = fn(...args);
+        rawDb.exec('COMMIT');
+        return result;
+      } catch (err) {
+        rawDb.exec('ROLLBACK');
+        throw err;
+      }
+    },
+    pragma: (p) => rawDb.exec('PRAGMA ' + p)
+  };
+} catch (e) {
+  const Database = require('better-sqlite3');
+  const rawDb = new Database(dbPath);
+  rawDb.pragma('foreign_keys = ON');
+  rawDb.pragma('journal_mode = WAL');
+  db = rawDb;
+}
+
+// Password hashing utility
+function hashPassword(password, salt = 'master_pos_salt_2026') {
+  return crypto.pbkdf2Sync(password, salt, 1000, 32, 'sha256').toString('hex');
+}
 
 function initDb() {
   db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      password_hash TEXT,
+      role TEXT NOT NULL DEFAULT 'sales', -- 'admin' | 'sales'
+      auth_provider TEXT DEFAULT 'local', -- 'local' | 'google'
+      google_id TEXT,
+      avatar_url TEXT DEFAULT '',
+      is_verified INTEGER DEFAULT 1,
+      is_active INTEGER DEFAULT 1,
+      verification_code TEXT DEFAULT '',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      last_login DATETIME
+    );
+
     CREATE TABLE IF NOT EXISTS customers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       code TEXT UNIQUE NOT NULL,
@@ -93,20 +149,40 @@ function initDb() {
     );
   `);
 
-  // Initialize default access code if not set
-  const defaultCode = process.env.ACCESS_CODE || '123456';
-  db.prepare(`
-    INSERT OR IGNORE INTO settings (key, value) VALUES ('access_code', ?)
-  `).run(defaultCode);
+  // Default Host Administrator & Sales user accounts
+  seedDefaultUsers();
 
-  // Check if seeding is needed
+  // Check if initial master data seeding is needed
   const customerCount = db.prepare('SELECT COUNT(*) as count FROM customers').get().count;
   if (customerCount === 0) {
-    seedData();
+    seedMasterData();
   }
 }
 
-function seedData() {
+function seedDefaultUsers() {
+  const insertUser = db.prepare(`
+    INSERT OR IGNORE INTO users (name, email, password_hash, role, auth_provider, is_verified, is_active)
+    VALUES (?, ?, ?, ?, 'local', 1, 1)
+  `);
+
+  // 1. Host / Administrator
+  insertUser.run(
+    'Host Administrator',
+    'admin@masterpos.com',
+    hashPassword('admin123'),
+    'admin'
+  );
+
+  // 2. Sales Account
+  insertUser.run(
+    'Sales Tim 1',
+    'sales@masterpos.com',
+    hashPassword('sales123'),
+    'sales'
+  );
+}
+
+function seedMasterData() {
   const seedFile = path.join(__dirname, 'seed_data.json');
   if (!fs.existsSync(seedFile)) {
     console.log('No seed file found.');
@@ -116,7 +192,7 @@ function seedData() {
   const raw = fs.readFileSync(seedFile, 'utf-8');
   const seed = JSON.parse(raw);
 
-  console.log('Seeding initial data to SQLite...');
+  console.log('Seeding master data (Customers, Products, Pricing Matrix with Stock = 0)...');
 
   const insertCustomer = db.prepare(`
     INSERT INTO customers (code, name, phone, address) VALUES (?, ?, ?, ?)
@@ -131,17 +207,7 @@ function seedData() {
   `);
 
   const insertStock = db.prepare(`
-    INSERT INTO stocks (product_id, stok_awal, stok_in, stok_out, stok_akhir) VALUES (?, ?, ?, ?, ?)
-  `);
-
-  const insertInvoice = db.prepare(`
-    INSERT INTO invoices (invoice_no, date, customer_id, customer_name_manual, total_amount, notes)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `);
-
-  const insertInvoiceItem = db.prepare(`
-    INSERT INTO invoice_items (invoice_id, product_id, qty, modal_price, unit_price, subtotal, laba)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO stocks (product_id, stok_awal, stok_in, stok_out, stok_akhir) VALUES (?, 0, 0, 0, 0)
   `);
 
   const tx = db.transaction(() => {
@@ -156,9 +222,8 @@ function seedData() {
       const res = insertProduct.run(p.name, p.category, p.modal_price, p.default_price);
       prodMap[p.name] = { id: res.lastInsertRowid, modal: p.modal_price };
 
-      // Initialize stock
-      const st = seed.stock[p.name] || { stok_awal: 0, stok_in: 0, stok_out: 0, stok_akhir: 0 };
-      insertStock.run(res.lastInsertRowid, st.stok_awal, st.stok_in, st.stok_out, st.stok_akhir);
+      // Initialize all stocks to exactly 0 (requirement: stok dimulai dari 0)
+      insertStock.run(res.lastInsertRowid);
     }
 
     for (const pm of seed.pricing_matrix) {
@@ -169,41 +234,17 @@ function seedData() {
       }
     }
 
-    for (const inv of seed.invoices) {
-      const cId = custMap[inv.customer_code] || null;
-      const resInv = insertInvoice.run(
-        inv.invoice_no,
-        inv.date,
-        cId,
-        inv.customer_code,
-        inv.total_amount,
-        'Import dari Excel'
-      );
-      const invId = resInv.lastInsertRowid;
-
-      for (const itm of inv.items) {
-        const pInfo = prodMap[itm.product_name];
-        if (pInfo) {
-          const modal = pInfo.modal;
-          const laba = itm.subtotal - (modal * itm.qty);
-          insertInvoiceItem.run(
-            invId,
-            pInfo.id,
-            itm.qty,
-            modal,
-            itm.unit_price,
-            itm.subtotal,
-            laba
-          );
-        }
-      }
-    }
+    // Invoices start at 0 (empty transactions)
   });
 
   tx();
-  console.log('Seeding completed successfully!');
+  console.log('Master data seeded successfully with stock starting at 0 and 0 transactions.');
 }
 
 initDb();
 
-module.exports = db;
+module.exports = {
+  db,
+  hashPassword,
+  initDb
+};

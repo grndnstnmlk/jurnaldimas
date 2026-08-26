@@ -4,29 +4,33 @@ import {
   Search, 
   Save, 
   Check, 
-  HelpCircle,
-  RefreshCw,
-  SlidersHorizontal,
-  FileText,
-  Printer,
-  MessageCircle,
-  Eye,
-  EyeOff,
-  Building2,
-  TrendingUp,
-  Percent,
-  Share2,
-  Edit3,
-  Copy,
-  Zap,
-  CheckCircle2,
-  X
+  HelpCircle, 
+  RefreshCw, 
+  SlidersHorizontal, 
+  FileText, 
+  Printer, 
+  MessageCircle, 
+  Eye, 
+  EyeOff, 
+  Building2, 
+  TrendingUp, 
+  Percent, 
+  Share2, 
+  Edit3, 
+  Copy, 
+  Zap, 
+  CheckCircle2, 
+  X,
+  ShieldCheck
 } from 'lucide-react';
 import { formatRupiah } from '../utils/format';
 import { useRealtime } from '../context/RealtimeContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function MatriksHarga() {
   const { eventCounter } = useRealtime();
+  const { isAdmin } = useAuth();
+
   const [products, setProducts] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [matrix, setMatrix] = useState({});
@@ -40,7 +44,7 @@ export default function MatriksHarga() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
 
-  // Modals for Bulk Actions
+  // Modals for Bulk Actions (Admin only)
   const [showCopyModal, setShowCopyModal] = useState(false);
   const [sourceCustomerCopyId, setSourceCustomerCopyId] = useState('');
   const [showMarginModal, setShowMarginModal] = useState(false);
@@ -103,7 +107,7 @@ export default function MatriksHarga() {
     }));
   };
 
-  // Batch save all edited prices for current customer
+  // Batch save all edited prices for current customer (Admin only)
   const handleSaveAllCustomerPrices = async () => {
     setIsSaving(true);
     setSaveSuccessMsg('');
@@ -197,8 +201,8 @@ export default function MatriksHarga() {
     }
   };
 
-  // Cell click in full matrix mode
   const handleCellClick = (prodId, custId, currentPrice) => {
+    if (!isAdmin) return; // Sales cannot edit matrix
     setEditingCell({ prodId, custId });
     setEditValue(currentPrice ? (currentPrice / 1000).toString() : '');
   };
@@ -278,7 +282,7 @@ export default function MatriksHarga() {
     return (
       <div className="max-w-6xl mx-auto px-4 py-16 text-center text-slate-500">
         <div className="animate-spin w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full mx-auto mb-3"></div>
-        <p className="text-xs font-bold text-slate-700">Memuat matriks harga 120 produk...</p>
+        <p className="text-xs font-bold text-slate-700">Memuat matriks harga produk...</p>
       </div>
     );
   }
@@ -289,46 +293,55 @@ export default function MatriksHarga() {
       {/* Header & Mode Switcher */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <h1 className="text-lg sm:text-xl font-extrabold text-slate-800 tracking-tight">
-            Matriks & Pengaturan Harga Pelanggan
+          <h1 className="text-lg sm:text-xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
+            <span>Database & Katalog Harga Pelanggan</span>
+            {!isAdmin && (
+              <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                Mode Sales
+              </span>
+            )}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Atur harga jual khusus untuk pelanggan baru atau bagikan price list resmi
+            {isAdmin 
+              ? 'Atur harga jual khusus untuk setiap pelanggan, margin HPP, atau bagikan price list resmi' 
+              : 'Katalog harga resmi dan harga khusus per toko/pelanggan untuk pembuatan transaksi'}
           </p>
         </div>
 
-        {/* View Mode Toggle */}
-        <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 self-start">
-          <button
-            onClick={() => {
-              setViewMode('customer_pricelist');
-              setIsEditMode(false);
-            }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition ${
-              viewMode === 'customer_pricelist'
-                ? 'bg-white text-emerald-700 shadow-xs border border-slate-200'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <FileText className="w-3.5 h-3.5" />
-            <span>Price List & Atur Harga Toko</span>
-          </button>
+        {/* View Mode Toggle (Admin Only) */}
+        {isAdmin && (
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 self-start">
+            <button
+              onClick={() => {
+                setViewMode('customer_pricelist');
+                setIsEditMode(false);
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition ${
+                viewMode === 'customer_pricelist'
+                  ? 'bg-white text-emerald-700 shadow-xs border border-slate-200'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Price List & Atur Harga Toko</span>
+            </button>
 
-          <button
-            onClick={() => {
-              setViewMode('matrix');
-              setIsEditMode(false);
-            }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition ${
-              viewMode === 'matrix'
-                ? 'bg-white text-emerald-700 shadow-xs border border-slate-200'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <TableProperties className="w-3.5 h-3.5" />
-            <span>Matriks Lengkap (26 Toko)</span>
-          </button>
-        </div>
+            <button
+              onClick={() => {
+                setViewMode('matrix');
+                setIsEditMode(false);
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition ${
+                viewMode === 'matrix'
+                  ? 'bg-white text-emerald-700 shadow-xs border border-slate-200'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <TableProperties className="w-3.5 h-3.5" />
+              <span>Matriks Lengkap (26 Toko)</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Success Notification Banner */}
@@ -353,7 +366,7 @@ export default function MatriksHarga() {
               <div className="md:col-span-6">
                 <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
                   <Building2 className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Pilih Pelanggan / Toko yang Dikelola</span>
+                  <span>Pilih Pelanggan / Toko</span>
                 </label>
                 <select
                   value={selectedCustomerId}
@@ -374,55 +387,59 @@ export default function MatriksHarga() {
               {/* Action Buttons Toolbar (6 cols) */}
               <div className="md:col-span-6 flex flex-wrap items-center justify-start md:justify-end gap-1.5 pt-1 md:pt-4">
                 
-                {/* Toggle Edit Price Button */}
-                <button
-                  onClick={handleToggleEditMode}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 ${
-                    isEditMode
-                      ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
-                      : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-                  }`}
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                  <span>{isEditMode ? 'Batal Edit' : 'Ubah Harga Toko Ini'}</span>
-                </button>
+                {/* Admin-only Price Editing Controls */}
+                {isAdmin && (
+                  <>
+                    <button
+                      onClick={handleToggleEditMode}
+                      className={`px-3 py-2 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 ${
+                        isEditMode
+                          ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
+                          : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                      }`}
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>{isEditMode ? 'Batal Edit' : 'Ubah Harga Toko'}</span>
+                    </button>
 
-                {/* Copy Prices from other customer */}
-                <button
-                  onClick={() => setShowCopyModal(true)}
-                  className="px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200 transition flex items-center gap-1.5"
-                  title="Salin semua harga dari pelanggan lain"
-                >
-                  <Copy className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Salin Harga</span>
-                </button>
+                    <button
+                      onClick={() => setShowCopyModal(true)}
+                      className="px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200 transition flex items-center gap-1.5"
+                      title="Salin semua harga dari pelanggan lain"
+                    >
+                      <Copy className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Salin Harga</span>
+                    </button>
 
-                {/* Auto Margin Markup */}
-                <button
-                  onClick={() => setShowMarginModal(true)}
-                  className="px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200 transition flex items-center gap-1.5"
-                  title="Terapkan margin serentak"
-                >
-                  <Zap className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Set Margin %</span>
-                </button>
+                    <button
+                      onClick={() => setShowMarginModal(true)}
+                      className="px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200 transition flex items-center gap-1.5"
+                      title="Terapkan margin serentak"
+                    >
+                      <Zap className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Set Margin %</span>
+                    </button>
+                  </>
+                )}
 
-                {/* WhatsApp & Print */}
+                {/* WhatsApp & Print (Available for both Sales and Admin) */}
                 {!isEditMode && (
                   <>
                     <button
                       onClick={handleShareWhatsApp}
-                      className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold border border-emerald-200 transition"
+                      className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold border border-emerald-200 transition flex items-center gap-1"
                       title="Kirim ke WhatsApp Toko"
                     >
-                      <MessageCircle className="w-4 h-4" />
+                      <MessageCircle className="w-4 h-4 text-emerald-600" />
+                      <span className="text-xs font-bold">Kirim WA</span>
                     </button>
                     <button
                       onClick={handlePrintPriceList}
-                      className="p-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition"
+                      className="p-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition flex items-center gap-1"
                       title="Cetak Price List"
                     >
                       <Printer className="w-4 h-4" />
+                      <span className="text-xs font-bold">Cetak</span>
                     </button>
                   </>
                 )}
@@ -461,7 +478,7 @@ export default function MatriksHarga() {
             />
           </div>
 
-          {/* Price List & Editor Table */}
+          {/* Price List Table */}
           <div id="printable-receipt" className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
             
             {/* Header info */}
@@ -474,7 +491,7 @@ export default function MatriksHarga() {
                   Toko: {selectedCustomerObj ? `[${selectedCustomerObj.code}] ${selectedCustomerObj.name}` : '-'}
                 </div>
                 <div className="text-[11px] text-slate-500">
-                  CV. Master Cigarettes • Surabaya, Jawa Timur
+                  CV. Master Cigarettes • Distributor & Grosir Rokok Resmi
                 </div>
               </div>
               <div className="text-left sm:text-right text-xs text-slate-500">
@@ -489,7 +506,7 @@ export default function MatriksHarga() {
                     <th className="px-4 py-3">No.</th>
                     <th className="px-4 py-3">Nama Produk Rokok</th>
                     <th className="px-4 py-3 text-right">
-                      {isEditMode ? 'Ubah Harga Beli Toko (Rp)' : 'Harga Beli Toko / Slop'}
+                      {isEditMode ? 'Ubah Harga Beli Toko (Rp)' : 'Harga Jual Toko / Slop'}
                     </th>
                     {!isEditMode && (
                       <>
@@ -513,7 +530,6 @@ export default function MatriksHarga() {
                           {p.name}
                         </td>
                         
-                        {/* Column: Price (Editable or Read-Only) */}
                         <td className="px-4 py-2.5 text-right font-bold">
                           {isEditMode ? (
                             <div className="flex items-center justify-end gap-1">
@@ -553,9 +569,9 @@ export default function MatriksHarga() {
       )}
 
       {/* ========================================================================= */}
-      {/* MODE 2: FULL MATRIX GRID (26 CUSTOMERS) */}
+      {/* MODE 2: FULL MATRIX GRID (ADMIN ONLY) */}
       {/* ========================================================================= */}
-      {viewMode === 'matrix' && (
+      {isAdmin && viewMode === 'matrix' && (
         <div className="space-y-3">
           
           <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
@@ -597,73 +613,75 @@ export default function MatriksHarga() {
               </button>
 
               <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-200">
-                💡 Klik sel untuk edit
+                💡 Klik sel untuk edit harga
               </span>
             </div>
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-            <div className="overflow-x-auto max-h-[640px]">
+            <div className="overflow-x-auto max-h-[70vh]">
               <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-50 sticky top-0 z-20 border-b border-slate-200">
-                  <tr className="text-slate-600 uppercase">
-                    <th className="px-4 py-3 sticky left-0 z-30 bg-slate-50 min-w-[190px] border-r border-slate-200 font-bold">
-                      Nama Produk
+                <thead className="bg-slate-800 text-white sticky top-0 z-20">
+                  <tr>
+                    <th className="p-3 sticky left-0 z-30 bg-slate-900 border-b border-r border-slate-700 min-w-[200px]">
+                      PRODUK
                     </th>
                     {showHPP && (
-                      <th className="px-3 py-3 text-right bg-amber-50/70 min-w-[85px] border-r border-slate-200 text-amber-900 font-bold">
+                      <th className="p-3 text-right bg-amber-950/80 text-amber-200 border-b border-slate-700 min-w-[90px]">
                         HPP (Modal)
                       </th>
                     )}
                     {filteredCustomers.map((c) => (
-                      <th 
-                        key={c.id} 
-                        className="px-2.5 py-3 text-center min-w-[75px] border-r border-slate-200 font-bold"
+                      <th
+                        key={c.id}
+                        className="p-3 text-center border-b border-r border-slate-700 min-w-[100px]"
                         title={c.name}
                       >
-                        <div className="text-emerald-700 font-mono text-xs font-bold">{c.code}</div>
-                        <div className="text-[9px] text-slate-400 truncate max-w-[65px] font-sans">{c.name}</div>
+                        <div className="font-extrabold text-emerald-400">{c.code}</div>
+                        <div className="text-[10px] text-slate-300 truncate max-w-[90px] mx-auto font-normal">
+                          {c.name}
+                        </div>
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 font-mono">
+                <tbody className="divide-y divide-slate-200 font-mono">
                   {filteredProducts.map((p) => (
                     <tr key={p.id} className="hover:bg-slate-50 transition">
-                      <td className="px-4 py-2.5 font-sans font-bold text-slate-800 sticky left-0 z-10 bg-white border-r border-slate-100">
+                      <td className="p-2.5 font-sans font-bold text-slate-800 sticky left-0 bg-white z-10 border-r border-slate-200 shadow-xs">
                         {p.name}
                       </td>
 
                       {showHPP && (
-                        <td className="px-3 py-2 text-right text-amber-900 font-semibold border-r border-slate-100 bg-amber-50/30">
-                          {p.modal_price ? (p.modal_price / 1000).toLocaleString() : '0'}k
+                        <td className="p-2.5 text-right font-bold text-amber-700 bg-amber-50/50 border-r border-slate-200">
+                          {formatRupiah(p.modal_price)}
                         </td>
                       )}
 
                       {filteredCustomers.map((c) => {
                         const key = `${p.id}_${c.id}`;
                         const price = matrix[key];
+                        const isCustom = price > 0;
                         const isEditing = editingCell?.prodId === p.id && editingCell?.custId === c.id;
-                        const isJustSaved = savedBadge === key;
+                        const isSaved = savedBadge === key;
 
                         return (
                           <td
                             key={c.id}
-                            onClick={() => !isEditing && handleCellClick(p.id, c.id, price)}
-                            className={`px-1.5 py-1 text-center border-r border-slate-100 cursor-pointer transition ${
-                              isEditing
-                                ? 'bg-emerald-50'
-                                : isJustSaved
-                                ? 'bg-emerald-100'
-                                : price > 0
-                                ? 'hover:bg-emerald-50/50 text-slate-900'
-                                : 'text-slate-300 hover:bg-slate-50'
+                            onClick={() => !isEditing && handleCellClick(p.id, c.id, price || p.default_price || p.modal_price)}
+                            className={`p-2 text-center border-r border-slate-100 cursor-pointer transition select-none ${
+                              isSaved
+                                ? 'bg-emerald-200 text-emerald-900 font-extrabold'
+                                : isCustom
+                                  ? 'bg-emerald-50/40 text-emerald-900 font-bold hover:bg-emerald-100'
+                                  : 'text-slate-400 hover:bg-slate-100'
                             }`}
                           >
                             {isEditing ? (
                               <input
-                                type="number"
                                 autoFocus
+                                type="number"
+                                step="0.5"
                                 value={editValue}
                                 onChange={(e) => setEditValue(e.target.value)}
                                 onBlur={() => handleSaveCell(p.id, c.id)}
@@ -671,16 +689,10 @@ export default function MatriksHarga() {
                                   if (e.key === 'Enter') handleSaveCell(p.id, c.id);
                                   if (e.key === 'Escape') setEditingCell(null);
                                 }}
-                                className="w-14 bg-white border border-emerald-500 text-emerald-700 font-bold px-1 py-0.5 rounded text-center text-xs focus:outline-none"
+                                className="w-16 bg-white border-2 border-emerald-500 text-emerald-900 font-extrabold text-center py-0.5 rounded focus:outline-none"
                               />
                             ) : (
-                              <div className="font-bold">
-                                {price > 0 ? (
-                                  <span className="text-emerald-700">{(price / 1000).toLocaleString()}k</span>
-                                ) : (
-                                  <span className="text-slate-300">-</span>
-                                )}
-                              </div>
+                              <span>{price ? (price / 1000).toLocaleString('id-ID') : '-'}</span>
                             )}
                           </td>
                         );
@@ -695,113 +707,87 @@ export default function MatriksHarga() {
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* MODAL: SALIN HARGA DARI PELANGGAN LAIN */}
-      {/* ========================================================================= */}
+      {/* Copy Modal (Admin Only) */}
       {showCopyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-          <div className="w-full max-w-sm bg-white rounded-2xl p-5 border border-slate-200 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
-                <Copy className="w-4 h-4 text-emerald-600" />
-                <span>Salin Harga Pelanggan</span>
-              </h3>
-              <button onClick={() => setShowCopyModal(false)} className="text-slate-400 hover:text-slate-700">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <p className="text-xs text-slate-600">
-              Salin seluruh daftar harga produk dari toko lain ke: <br />
-              <span className="font-bold text-emerald-700">[{selectedCustomerObj?.code}] {selectedCustomerObj?.name}</span>
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md p-6 space-y-4 shadow-2xl border border-slate-200">
+            <h3 className="font-extrabold text-base text-slate-800">
+              Salin Harga Khusus Antar Pelanggan
+            </h3>
+            <p className="text-xs text-slate-500">
+              Salin seluruh harga dari toko sumber ke toko: <span className="font-bold text-slate-800">{selectedCustomerObj?.name}</span>.
             </p>
-
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 mb-1">
-                Pilih Toko Sumber (Yang Ingin Disalin):
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Pilih Toko Sumber:
               </label>
               <select
                 value={sourceCustomerCopyId}
                 onChange={(e) => setSourceCustomerCopyId(e.target.value)}
-                className="w-full bg-slate-50 text-slate-800 px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold"
+                className="w-full bg-slate-50 text-slate-800 p-2.5 rounded-xl border border-slate-200 text-xs font-bold focus:outline-none"
               >
-                {customers
-                  .filter((c) => c.id !== Number(selectedCustomerId))
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>
-                      [{c.code}] {c.name}
-                    </option>
-                  ))}
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    [{c.code}] {c.name}
+                  </option>
+                ))}
               </select>
             </div>
-
-            <div className="pt-2 flex justify-end gap-2">
+            <div className="flex justify-end gap-2 pt-2">
               <button
+                type="button"
                 onClick={() => setShowCopyModal(false)}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-800"
+                className="px-4 py-2 rounded-xl bg-slate-100 font-bold text-xs"
               >
                 Batal
               </button>
               <button
-                onClick={handleExecuteCopyPrices}
+                type="button"
                 disabled={isSaving}
-                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs disabled:opacity-50"
+                onClick={handleExecuteCopyPrices}
+                className="px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs"
               >
-                {isSaving ? 'Menyalin...' : 'Salin Sekarang'}
+                {isSaving ? 'Menyalin...' : 'Salin Harga Sekarang'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* MODAL: SET MARGIN MASSAL (+X% DARI MODAL HPP) */}
-      {/* ========================================================================= */}
+      {/* Margin Modal (Admin Only) */}
       {showMarginModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-          <div className="w-full max-w-sm bg-white rounded-2xl p-5 border border-slate-200 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
-                <Zap className="w-4 h-4 text-amber-500" />
-                <span>Set Margin Harga Massal</span>
-              </h3>
-              <button onClick={() => setShowMarginModal(false)} className="text-slate-400 hover:text-slate-700">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <p className="text-xs text-slate-600">
-              Otomatis hitung harga seluruh 120 produk untuk <span className="font-bold text-emerald-700">[{selectedCustomerObj?.code}] {selectedCustomerObj?.name}</span> berdasarkan persentase di atas modal HPP:
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md p-6 space-y-4 shadow-2xl border border-slate-200">
+            <h3 className="font-extrabold text-base text-slate-800">
+              Terapkan Margin Serentak dari HPP
+            </h3>
+            <p className="text-xs text-slate-500">
+              Hitung otomatis harga jual untuk <span className="font-bold text-slate-800">{selectedCustomerObj?.name}</span> berdasarkan margin keuntungan % dari harga modal (HPP).
             </p>
-
             <div>
-              <label className="block text-[11px] font-bold text-slate-500 mb-1">
-                Margin Keuntungan (%):
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Persentase Margin (+%):
               </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={customMarginInput}
-                  onChange={(e) => setCustomMarginInput(e.target.value)}
-                  className="w-24 bg-slate-50 text-slate-800 px-3 py-2 rounded-xl border border-slate-200 text-sm font-bold text-center"
-                />
-                <span className="text-xs text-slate-500 font-medium">Contoh: 3%, 5%, atau 10%</span>
-              </div>
+              <input
+                type="number"
+                value={customMarginInput}
+                onChange={(e) => setCustomMarginInput(e.target.value)}
+                className="w-full bg-slate-50 text-slate-800 p-2.5 rounded-xl border border-slate-200 text-sm font-bold focus:outline-none"
+              />
             </div>
-
-            <div className="pt-2 flex justify-end gap-2">
+            <div className="flex justify-end gap-2 pt-2">
               <button
+                type="button"
                 onClick={() => setShowMarginModal(false)}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-800"
+                className="px-4 py-2 rounded-xl bg-slate-100 font-bold text-xs"
               >
                 Batal
               </button>
               <button
-                onClick={handleExecuteApplyMargin}
+                type="button"
                 disabled={isSaving}
-                className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs disabled:opacity-50"
+                onClick={handleExecuteApplyMargin}
+                className="px-4 py-2 rounded-xl bg-amber-600 text-white font-bold text-xs"
               >
                 {isSaving ? 'Menerapkan...' : 'Terapkan Margin'}
               </button>

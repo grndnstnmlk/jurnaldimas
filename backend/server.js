@@ -3,9 +3,10 @@ const http = require('http');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { WebSocketServer, WebSocket } = require('ws');
 const XLSX = require('xlsx');
-const db = require('./db');
+const { db, hashPassword } = require('./db');
 
 const app = express();
 const server = http.createServer(app);
@@ -33,97 +34,447 @@ wss.on('connection', (ws) => {
   ws.send(JSON.stringify({ event: 'CONNECTED', message: 'Connected to Master Cigarettes Realtime Server' }));
 });
 
-const crypto = require('crypto');
+// ==========================================
+// TOKEN & SECURITY UTILITIES
+// ==========================================
+const JWT_SECRET = process.env.JWT_SECRET || 'master_pos_jwt_secret_key_2026_super_secure';
 
-function getStoredAccessCode() {
-  const row = db.prepare("SELECT value FROM settings WHERE key = 'access_code'").get();
-  return row ? row.value : (process.env.ACCESS_CODE || '123456');
+function generateUserToken(user) {
+  const payload = {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    exp: Date.now() + 30 * 24 * 60 * 60 * 1000 // 30 days
+  };
+  const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = crypto.createHmac('sha256', JWT_SECRET).update(body).digest('base64url');
+  return `${body}.${signature}`;
 }
 
-function generateToken(code) {
-  return crypto.createHash('sha256').update(code + '_master_pos_salt').digest('hex');
+function verifyUserToken(tokenStr) {
+  if (!tokenStr) return null;
+  try {
+    const parts = tokenStr.split('.');
+    if (parts.length !== 2) return null;
+    const [body, signature] = parts;
+    const expectedSig = crypto.createHmac('sha256', JWT_SECRET).update(body).digest('base64url');
+    if (signature !== expectedSig) return null;
+
+    const payload = JSON.parse(Buffer.from(body, 'base64url').toString());
+    if (payload.exp && payload.exp < Date.now()) return null;
+    return payload;
+  } catch {
+    return null;
+  }
 }
 
-// Public Health Check for Keep-Alive Ping (UptimeRobot)
+// Middleware: Authenticate User
+function authenticate(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader ? authHeader.replace('Bearer ', '') : req.query.token;
+
+  const payload = verifyUserToken(token);
+  if (!payload) {
+    return res.status(401).json({ error: 'Sesi login tidak valid atau telah berakhir. Silakan login kembali.' });
+  }
+
+  const user = db.prepare('SELECT id, name, email, role, avatar_url, is_active FROM users WHERE id = ?').get(payload.id);
+  if (!user || !user.is_active) {
+    return res.status(401).json({ error: 'Akun Anda tidak aktif atau tidak ditemukan.' });
+  }
+
+  req.user = user;
+  next();
+}
+
+// Middleware: Require Admin / Host Role
+function requireAdmin(req, res, next) {
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Akses ditolak. Fitur ini hanya untuk Administrator / Host.' });
+  }
+  next();
+}
+
+// Public Health Check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
 // ==========================================
-// AUTHENTICATION & ACCESS CONTROL API
+// AUTHENTICATION & REGISTRATION API
 // ==========================================
+
+// Register Account
+app.post('/api/auth/register', (req, res) => {
+  try {
+    const { name, email, password, role } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'Nama lengkap, email, dan password wajib diisi.' });
+    }
+
+    const cleanEmail = String(email).trim().toLowerCase();
+    const cleanName = String(name).trim();
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password minimal 6 karakter.' });
+    }
+
+    // Check if user already exists
+    const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(cleanEmail);
+    if (existing) {
+      return res.status(400).json({ error: 'Email ini sudah terdaftar. Silakan login.' });
+    }
+
+    // Determine role: if role requested is admin and no other users exist, grant admin; otherwise default to sales or chosen
+    const userCount = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
+    const finalRole = (userCount === 0 || role === 'admin') ? 'admin' : (role || 'sales');
+    const pwdHash = hashPassword(password);
+    const verificationCode = String(Math.floor(100000 + Math.random() * 900000));
+
+    const insertRes = db.prepare(`
+      INSERT INTO users (name, email, password_hash, role, auth_provider, is_verified, is_active, verification_code)
+      VALUES (?, ?, ?, ?, 'local', 1, 1, ?)
+    `).run(cleanName, cleanEmail, pwdHash, finalRole, verificationCode);
+
+    const newUser = {
+      id: insertRes.lastInsertRowid,
+      name: cleanName,
+      email: cleanEmail,
+      role: finalRole,
+      avatar_url: '',
+      is_verified: 1,
+      is_active: 1
+    };
+
+    const token = generateUserToken(newUser);
+    broadcast('USER_REGISTERED', { id: newUser.id, name: newUser.name, role: newUser.role });
+
+    return res.json({
+      success: true,
+      token,
+      user: newUser,
+      message: 'Registrasi akun berhasil.'
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Login with Email & Password
 app.post('/api/auth/login', (req, res) => {
   try {
-    const { code } = req.body;
-    const currentCode = getStoredAccessCode();
-    if (code && String(code).trim() === String(currentCode).trim()) {
-      const token = generateToken(currentCode);
-      return res.json({ success: true, token });
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email dan password wajib diisi.' });
     }
-    return res.status(401).json({ error: 'Kode akses tidak valid. Silakan coba lagi.' });
+
+    const cleanEmail = String(email).trim().toLowerCase();
+    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(cleanEmail);
+
+    if (!user) {
+      return res.status(401).json({ error: 'Email tidak terdaftar.' });
+    }
+
+    if (!user.is_active) {
+      return res.status(403).json({ error: 'Akun Anda sedang dinonaktifkan oleh Administrator.' });
+    }
+
+    const inputHash = hashPassword(password);
+    if (user.password_hash !== inputHash) {
+      return res.status(401).json({ error: 'Password tidak sesuai. Silakan coba lagi.' });
+    }
+
+    // Update last login
+    db.prepare('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?').run(user.id);
+
+    const safeUser = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      avatar_url: user.avatar_url,
+      auth_provider: user.auth_provider,
+      is_verified: user.is_verified,
+      is_active: user.is_active
+    };
+
+    const token = generateUserToken(safeUser);
+    return res.json({ success: true, token, user: safeUser });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post('/api/auth/verify', (req, res) => {
+// Login / Register with Google
+app.post('/api/auth/google', (req, res) => {
   try {
-    const { token } = req.body;
-    const currentCode = getStoredAccessCode();
-    const validToken = generateToken(currentCode);
-    if (token === validToken) {
-      return res.json({ success: true, valid: true });
+    const { credential, profile } = req.body;
+    let email = '';
+    let name = '';
+    let avatar = '';
+    let googleId = '';
+
+    if (profile && profile.email) {
+      email = profile.email;
+      name = profile.name || email.split('@')[0];
+      avatar = profile.picture || profile.avatar || '';
+      googleId = profile.id || profile.sub || '';
+    } else if (credential) {
+      // Decode JWT credential from Google Identity Services
+      try {
+        const parts = credential.split('.');
+        if (parts.length >= 2) {
+          const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+          email = payload.email;
+          name = payload.name || payload.given_name || email.split('@')[0];
+          avatar = payload.picture || '';
+          googleId = payload.sub || '';
+        }
+      } catch (e) {
+        console.error('Google token decode err:', e);
+      }
     }
-    return res.status(401).json({ success: false, valid: false });
+
+    if (!email) {
+      return res.status(400).json({ error: 'Data akun Google tidak valid.' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    let user = db.prepare('SELECT * FROM users WHERE email = ?').get(cleanEmail);
+
+    if (user) {
+      if (!user.is_active) {
+        return res.status(403).json({ error: 'Akun Anda sedang dinonaktifkan oleh Administrator.' });
+      }
+      // Update google ID & avatar
+      db.prepare(`
+        UPDATE users 
+        SET google_id = COALESCE(google_id, ?), 
+            avatar_url = COALESCE(NULLIF(?, ''), avatar_url),
+            is_verified = 1,
+            last_login = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(googleId, avatar, user.id);
+    } else {
+      // Register new user via Google
+      // If user email matches admin / host email pattern or first user, assign admin, else sales
+      const userCount = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
+      const role = (userCount === 0 || cleanEmail.includes('admin') || cleanEmail.includes('host')) ? 'admin' : 'sales';
+
+      const insertRes = db.prepare(`
+        INSERT INTO users (name, email, role, auth_provider, google_id, avatar_url, is_verified, is_active, last_login)
+        VALUES (?, ?, ?, 'google', ?, ?, 1, 1, CURRENT_TIMESTAMP)
+      `).run(name, cleanEmail, role, googleId, avatar);
+
+      user = db.prepare('SELECT * FROM users WHERE id = ?').get(insertRes.lastInsertRowid);
+      broadcast('USER_REGISTERED', { id: user.id, name: user.name, role: user.role, provider: 'google' });
+    }
+
+    const safeUser = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      avatar_url: user.avatar_url || avatar,
+      auth_provider: user.auth_provider,
+      is_verified: 1,
+      is_active: user.is_active
+    };
+
+    const token = generateUserToken(safeUser);
+    return res.json({ success: true, token, user: safeUser });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post('/api/auth/change-code', (req, res) => {
+// Verify Current Session
+app.get('/api/auth/me', authenticate, (req, res) => {
+  res.json({ success: true, user: req.user });
+});
+
+// Change Password
+app.post('/api/auth/change-password', authenticate, (req, res) => {
   try {
-    const { current_code, new_code } = req.body;
-    const stored = getStoredAccessCode();
-    if (String(current_code).trim() !== String(stored).trim()) {
-      return res.status(400).json({ error: 'Kode akses lama tidak sesuai.' });
-    }
-    if (!new_code || String(new_code).trim().length < 4) {
-      return res.status(400).json({ error: 'Kode akses baru minimal 4 karakter/angka.' });
+    const { current_password, new_password } = req.body;
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+
+    if (user.auth_provider === 'local' && user.password_hash) {
+      if (hashPassword(current_password) !== user.password_hash) {
+        return res.status(400).json({ error: 'Password saat ini salah.' });
+      }
     }
 
-    const updated = String(new_code).trim();
-    db.prepare("UPDATE settings SET value = ? WHERE key = 'access_code'").run(updated);
-    const newToken = generateToken(updated);
-    return res.json({ success: true, token: newToken, message: 'Kode akses berhasil diubah.' });
+    if (!new_password || new_password.length < 6) {
+      return res.status(400).json({ error: 'Password baru minimal 6 karakter.' });
+    }
+
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashPassword(new_password), user.id);
+    return res.json({ success: true, message: 'Password berhasil diperbarui.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-});
-
-// Middleware for protecting data APIs
-app.use('/api', (req, res, next) => {
-  if (req.path.startsWith('/auth/') || req.path === '/health') {
-    return next();
-  }
-  const authHeader = req.headers['authorization'];
-  const token = authHeader ? authHeader.replace('Bearer ', '') : req.query.token;
-  const currentCode = getStoredAccessCode();
-  const validToken = generateToken(currentCode);
-
-  if (token === validToken) {
-    return next();
-  }
-  return res.status(401).json({ error: 'Akses ditolak. Silakan masukkan kode akses.' });
 });
 
 // ==========================================
-// 1. DASHBOARD & STATS API
+// ADMIN: USER MANAGEMENT API
 // ==========================================
-app.get('/api/dashboard', (req, res) => {
+app.get('/api/admin/users', authenticate, requireAdmin, (req, res) => {
+  try {
+    const users = db.prepare(`
+      SELECT id, name, email, role, auth_provider, avatar_url, is_verified, is_active, created_at, last_login
+      FROM users
+      ORDER BY id ASC
+    `).all();
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/users', authenticate, requireAdmin, (req, res) => {
+  try {
+    const { name, email, password, role } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'Nama, email, dan password wajib diisi.' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(cleanEmail);
+    if (existing) return res.status(400).json({ error: 'Email sudah terdaftar.' });
+
+    const insertRes = db.prepare(`
+      INSERT INTO users (name, email, password_hash, role, auth_provider, is_verified, is_active)
+      VALUES (?, ?, ?, ?, 'local', 1, 1)
+    `).run(name.trim(), cleanEmail, hashPassword(password), role || 'sales');
+
+    broadcast('USER_UPDATED', { id: insertRes.lastInsertRowid });
+    res.json({ success: true, id: insertRes.lastInsertRowid });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/admin/users/:id/role', authenticate, requireAdmin, (req, res) => {
+  try {
+    const { role } = req.body;
+    const userId = req.params.id;
+
+    if (!['admin', 'sales'].includes(role)) {
+      return res.status(400).json({ error: 'Role harus "admin" atau "sales".' });
+    }
+
+    // Prevent removing own admin role if last admin
+    if (Number(userId) === Number(req.user.id) && role !== 'admin') {
+      const adminCount = db.prepare("SELECT COUNT(*) as c FROM users WHERE role = 'admin'").get().c;
+      if (adminCount <= 1) {
+        return res.status(400).json({ error: 'Tidak dapat mengubah role karena Anda adalah satu-satunya Administrator.' });
+      }
+    }
+
+    db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, userId);
+    broadcast('USER_UPDATED', { id: userId, role });
+    res.json({ success: true, message: `Role berhasil diubah menjadi ${role === 'admin' ? 'Administrator' : 'Sales'}.` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/admin/users/:id/status', authenticate, requireAdmin, (req, res) => {
+  try {
+    const { is_active } = req.body;
+    const userId = req.params.id;
+
+    if (Number(userId) === Number(req.user.id)) {
+      return res.status(400).json({ error: 'Tidak dapat menonaktifkan akun sendiri.' });
+    }
+
+    db.prepare('UPDATE users SET is_active = ? WHERE id = ?').run(is_active ? 1 : 0, userId);
+    broadcast('USER_UPDATED', { id: userId, is_active });
+    res.json({ success: true, message: `Status akun berhasil diperbarui.` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/admin/users/:id', authenticate, requireAdmin, (req, res) => {
+  try {
+    const userId = req.params.id;
+    if (Number(userId) === Number(req.user.id)) {
+      return res.status(400).json({ error: 'Tidak dapat menghapus akun sendiri.' });
+    }
+
+    db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+    broadcast('USER_UPDATED', { id: userId, deleted: true });
+    res.json({ success: true, message: 'Akun berhasil dihapus.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// ADMIN: SYSTEM DATA RESET API
+// ==========================================
+
+// 1. Reset all transaction invoices & logs
+app.post('/api/admin/reset/transactions', authenticate, requireAdmin, (req, res) => {
+  try {
+    db.transaction(() => {
+      db.exec('DELETE FROM invoice_items');
+      db.exec('DELETE FROM invoices');
+      // Remove transaction stock logs
+      db.exec("DELETE FROM stock_logs WHERE type = 'OUT' AND notes LIKE 'Nota:%'");
+    })();
+
+    broadcast('INVOICE_RESET', { message: 'All transactions have been reset to 0.' });
+    broadcast('STOCK_UPDATED', { type: 'TX_RESET' });
+    res.json({ success: true, message: 'Seluruh riwayat transaksi & nota berhasil direset ke 0.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 2. Reset all stocks to 0
+app.post('/api/admin/reset/stocks', authenticate, requireAdmin, (req, res) => {
+  try {
+    db.transaction(() => {
+      db.exec('UPDATE stocks SET stok_awal = 0, stok_in = 0, stok_out = 0, stok_akhir = 0, updated_at = CURRENT_TIMESTAMP');
+      db.exec('DELETE FROM stock_logs');
+    })();
+
+    broadcast('STOCK_UPDATED', { type: 'STOCK_RESET_ALL_ZERO' });
+    res.json({ success: true, message: 'Seluruh stok barang berhasil direset menjadi 0.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 3. Reset both transactions & stocks to clean state
+app.post('/api/admin/reset/all-data', authenticate, requireAdmin, (req, res) => {
+  try {
+    db.transaction(() => {
+      db.exec('DELETE FROM invoice_items');
+      db.exec('DELETE FROM invoices');
+      db.exec('UPDATE stocks SET stok_awal = 0, stok_in = 0, stok_out = 0, stok_akhir = 0, updated_at = CURRENT_TIMESTAMP');
+      db.exec('DELETE FROM stock_logs');
+    })();
+
+    broadcast('INVOICE_RESET', { message: 'System full reset completed.' });
+    broadcast('STOCK_UPDATED', { type: 'FULL_RESET' });
+    res.json({ success: true, message: 'Seluruh transaksi dan data stok berhasil dibersihkan kembali ke 0.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// 1. DASHBOARD & STATS API (Admin Only)
+// ==========================================
+app.get('/api/dashboard', authenticate, requireAdmin, (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
 
-    // Total sales & profit overall & today
     const totalStats = db.prepare(`
       SELECT 
         COUNT(DISTINCT i.id) as total_invoices,
@@ -144,16 +495,13 @@ app.get('/api/dashboard', (req, res) => {
       WHERE i.date = ?
     `).get(today);
 
-    // Stock alert (Stok <= 5)
     const lowStockCount = db.prepare(`
       SELECT COUNT(*) as count FROM stocks WHERE stok_akhir <= 5
     `).get().count;
 
-    // Total active products and customers
     const productCount = db.prepare('SELECT COUNT(*) as count FROM products WHERE is_active = 1').get().count;
     const customerCount = db.prepare('SELECT COUNT(*) as count FROM customers').get().count;
 
-    // Top 5 Best Selling Products
     const topProducts = db.prepare(`
       SELECT p.name, SUM(ii.qty) as total_qty, SUM(ii.subtotal) as total_sales, SUM(ii.laba) as total_profit
       FROM invoice_items ii
@@ -163,7 +511,6 @@ app.get('/api/dashboard', (req, res) => {
       LIMIT 5
     `).all();
 
-    // Top 5 Customers
     const topCustomers = db.prepare(`
       SELECT c.code, c.name, COUNT(DISTINCT i.id) as order_count, SUM(i.total_amount) as total_spent
       FROM invoices i
@@ -173,7 +520,6 @@ app.get('/api/dashboard', (req, res) => {
       LIMIT 5
     `).all();
 
-    // Recent 5 Transactions
     const recentInvoices = db.prepare(`
       SELECT i.id, i.invoice_no, i.date, i.total_amount, COALESCE(c.name, i.customer_name_manual) as customer_name, c.code as customer_code
       FROM invoices i
@@ -198,9 +544,9 @@ app.get('/api/dashboard', (req, res) => {
 });
 
 // ==========================================
-// 2. PRODUCTS API
+// 2. PRODUCTS API (Sales & Admin)
 // ==========================================
-app.get('/api/products', (req, res) => {
+app.get('/api/products', authenticate, (req, res) => {
   try {
     const products = db.prepare(`
       SELECT p.*, s.stok_awal, s.stok_in, s.stok_out, s.stok_akhir
@@ -208,13 +554,21 @@ app.get('/api/products', (req, res) => {
       LEFT JOIN stocks s ON p.id = s.product_id
       ORDER BY p.name ASC
     `).all();
+
+    // If sales role, hide sensitive modal_price / HPP from general product response if needed
+    if (req.user.role === 'sales') {
+      products.forEach(p => {
+        p.modal_price = 0; // Protected from Sales
+      });
+    }
+
     res.json(products);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post('/api/products', (req, res) => {
+app.post('/api/products', authenticate, requireAdmin, (req, res) => {
   try {
     const { name, category, modal_price, default_price, initial_stock } = req.body;
     if (!name) return res.status(400).json({ error: 'Nama produk wajib diisi' });
@@ -241,7 +595,7 @@ app.post('/api/products', (req, res) => {
   }
 });
 
-app.put('/api/products/:id', (req, res) => {
+app.put('/api/products/:id', authenticate, requireAdmin, (req, res) => {
   try {
     const { name, category, modal_price, default_price, is_active, stock, initial_stock } = req.body;
     const prodId = req.params.id;
@@ -289,7 +643,7 @@ app.put('/api/products/:id', (req, res) => {
   }
 });
 
-app.delete('/api/products/:id', (req, res) => {
+app.delete('/api/products/:id', authenticate, requireAdmin, (req, res) => {
   try {
     const prodId = req.params.id;
     db.prepare('DELETE FROM products WHERE id = ?').run(prodId);
@@ -301,9 +655,9 @@ app.delete('/api/products/:id', (req, res) => {
 });
 
 // ==========================================
-// 3. CUSTOMERS API
+// 3. CUSTOMERS API (Sales & Admin)
 // ==========================================
-app.get('/api/customers', (req, res) => {
+app.get('/api/customers', authenticate, (req, res) => {
   try {
     const customers = db.prepare(`
       SELECT c.*, 
@@ -320,7 +674,7 @@ app.get('/api/customers', (req, res) => {
   }
 });
 
-app.post('/api/customers', (req, res) => {
+app.post('/api/customers', authenticate, requireAdmin, (req, res) => {
   try {
     const { code, name, phone, address } = req.body;
     if (!code || !name) return res.status(400).json({ error: 'Kode dan Nama pelanggan wajib diisi' });
@@ -336,7 +690,7 @@ app.post('/api/customers', (req, res) => {
   }
 });
 
-app.put('/api/customers/:id', (req, res) => {
+app.put('/api/customers/:id', authenticate, requireAdmin, (req, res) => {
   try {
     const { code, name, phone, address } = req.body;
     const custId = req.params.id;
@@ -352,7 +706,7 @@ app.put('/api/customers/:id', (req, res) => {
   }
 });
 
-app.delete('/api/customers/:id', (req, res) => {
+app.delete('/api/customers/:id', authenticate, requireAdmin, (req, res) => {
   try {
     const custId = req.params.id;
     db.prepare('DELETE FROM customers WHERE id = ?').run(custId);
@@ -364,9 +718,9 @@ app.delete('/api/customers/:id', (req, res) => {
 });
 
 // ==========================================
-// 4. PRICING MATRIX API
+// 4. PRICING MATRIX API (Sales & Admin)
 // ==========================================
-app.get('/api/pricing-matrix', (req, res) => {
+app.get('/api/pricing-matrix', authenticate, (req, res) => {
   try {
     const products = db.prepare('SELECT id, name, modal_price, default_price FROM products WHERE is_active = 1 ORDER BY name ASC').all();
     const customers = db.prepare('SELECT id, code, name FROM customers ORDER BY code ASC').all();
@@ -378,14 +732,19 @@ app.get('/api/pricing-matrix', (req, res) => {
       matrix[`${p.product_id}_${p.customer_id}`] = p.sell_price;
     }
 
+    if (req.user.role === 'sales') {
+      products.forEach(p => {
+        p.modal_price = 0; // Hide modal price from sales
+      });
+    }
+
     res.json({ products, customers, matrix });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Get price for a specific product and customer
-app.get('/api/pricing-matrix/lookup', (req, res) => {
+app.get('/api/pricing-matrix/lookup', authenticate, (req, res) => {
   try {
     const { product_id, customer_id } = req.query;
     if (!product_id || !customer_id) return res.status(400).json({ error: 'product_id & customer_id required' });
@@ -404,7 +763,7 @@ app.get('/api/pricing-matrix/lookup', (req, res) => {
       product_id: Number(product_id),
       customer_id: Number(customer_id),
       sell_price: finalPrice,
-      modal_price: item.modal_price,
+      modal_price: req.user.role === 'admin' ? item.modal_price : 0,
       is_custom: item.sell_price > 0
     });
   } catch (err) {
@@ -412,7 +771,7 @@ app.get('/api/pricing-matrix/lookup', (req, res) => {
   }
 });
 
-app.post('/api/pricing-matrix/update-cell', (req, res) => {
+app.post('/api/pricing-matrix/update-cell', authenticate, requireAdmin, (req, res) => {
   try {
     const { product_id, customer_id, sell_price } = req.body;
     db.prepare(`
@@ -428,8 +787,7 @@ app.post('/api/pricing-matrix/update-cell', (req, res) => {
   }
 });
 
-// Batch update prices for a specific customer
-app.post('/api/pricing-matrix/batch-update-customer', (req, res) => {
+app.post('/api/pricing-matrix/batch-update-customer', authenticate, requireAdmin, (req, res) => {
   try {
     const { customer_id, prices } = req.body;
     if (!customer_id || !Array.isArray(prices)) {
@@ -458,8 +816,7 @@ app.post('/api/pricing-matrix/batch-update-customer', (req, res) => {
   }
 });
 
-// Copy all pricing from a source customer to target customer
-app.post('/api/pricing-matrix/copy-customer-prices', (req, res) => {
+app.post('/api/pricing-matrix/copy-customer-prices', authenticate, requireAdmin, (req, res) => {
   try {
     const { source_customer_id, target_customer_id } = req.body;
     if (!source_customer_id || !target_customer_id) {
@@ -489,8 +846,7 @@ app.post('/api/pricing-matrix/copy-customer-prices', (req, res) => {
   }
 });
 
-// Apply default markup / margin percentage from HPP for a customer
-app.post('/api/pricing-matrix/apply-margin-customer', (req, res) => {
+app.post('/api/pricing-matrix/apply-margin-customer', authenticate, requireAdmin, (req, res) => {
   try {
     const { customer_id, margin_percent } = req.body;
     if (!customer_id) return res.status(400).json({ error: 'customer_id required' });
@@ -520,9 +876,9 @@ app.post('/api/pricing-matrix/apply-margin-customer', (req, res) => {
 });
 
 // ==========================================
-// 5. TRANSACTIONS & CASHIER NOTA API
+// 5. TRANSACTIONS & CASHIER NOTA API (Sales & Admin)
 // ==========================================
-app.get('/api/invoices', (req, res) => {
+app.get('/api/invoices', authenticate, (req, res) => {
   try {
     const { start_date, end_date, customer_id, search } = req.query;
     let query = `
@@ -557,13 +913,20 @@ app.get('/api/invoices', (req, res) => {
 
     query += ` GROUP BY i.id ORDER BY i.date DESC, i.id DESC`;
     const invoices = db.prepare(query).all(...params);
+
+    if (req.user.role === 'sales') {
+      invoices.forEach(inv => {
+        inv.total_laba = 0; // Hide profit from sales
+      });
+    }
+
     res.json(invoices);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get('/api/invoices/:id', (req, res) => {
+app.get('/api/invoices/:id', authenticate, (req, res) => {
   try {
     const invoice = db.prepare(`
       SELECT i.*, c.code as customer_code, c.name as customer_name, c.phone as customer_phone, c.address as customer_address
@@ -572,7 +935,7 @@ app.get('/api/invoices/:id', (req, res) => {
       WHERE i.id = ?
     `).get(req.params.id);
 
-    if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
+    if (!invoice) return res.status(404).json({ error: 'Nota tidak ditemukan' });
 
     const items = db.prepare(`
       SELECT ii.*, p.name as product_name, p.category as product_category
@@ -581,13 +944,20 @@ app.get('/api/invoices/:id', (req, res) => {
       WHERE ii.invoice_id = ?
     `).all(req.params.id);
 
+    if (req.user.role === 'sales') {
+      items.forEach(itm => {
+        itm.modal_price = 0;
+        itm.laba = 0;
+      });
+    }
+
     res.json({ ...invoice, items });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post('/api/invoices', (req, res) => {
+app.post('/api/invoices', authenticate, (req, res) => {
   try {
     const { date, customer_id, customer_name_manual, items, notes } = req.body;
     if (!items || items.length === 0) {
@@ -624,7 +994,6 @@ app.post('/api/invoices', (req, res) => {
     let totalAmount = 0;
 
     const tx = db.transaction(() => {
-      // Calculate total
       for (const itm of items) {
         totalAmount += Number(itm.subtotal || (itm.unit_price * itm.qty));
       }
@@ -659,7 +1028,7 @@ app.post('/api/invoices', (req, res) => {
   }
 });
 
-app.delete('/api/invoices/:id', (req, res) => {
+app.delete('/api/invoices/:id', authenticate, requireAdmin, (req, res) => {
   try {
     const invId = req.params.id;
     const items = db.prepare('SELECT * FROM invoice_items WHERE invoice_id = ?').all(invId);
@@ -688,9 +1057,9 @@ app.delete('/api/invoices/:id', (req, res) => {
 });
 
 // ==========================================
-// 6. STOCK OPNAME & RESTOCK API
+// 6. STOCK OPNAME & RESTOCK API (Sales & Admin)
 // ==========================================
-app.get('/api/stocks', (req, res) => {
+app.get('/api/stocks', authenticate, (req, res) => {
   try {
     const stocks = db.prepare(`
       SELECT s.*, p.name as product_name, p.category, p.modal_price
@@ -699,13 +1068,20 @@ app.get('/api/stocks', (req, res) => {
       WHERE p.is_active = 1
       ORDER BY p.name ASC
     `).all();
+
+    if (req.user.role === 'sales') {
+      stocks.forEach(s => {
+        s.modal_price = 0; // Hide modal price from sales
+      });
+    }
+
     res.json(stocks);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.get('/api/stocks/logs', (req, res) => {
+app.get('/api/stocks/logs', authenticate, (req, res) => {
   try {
     const logs = db.prepare(`
       SELECT sl.*, p.name as product_name
@@ -721,7 +1097,7 @@ app.get('/api/stocks/logs', (req, res) => {
 });
 
 // Restock / Barang Masuk
-app.post('/api/stocks/in', (req, res) => {
+app.post('/api/stocks/in', authenticate, (req, res) => {
   try {
     const { product_id, qty, date, notes } = req.body;
     if (!product_id || !qty || qty <= 0) {
@@ -751,8 +1127,8 @@ app.post('/api/stocks/in', (req, res) => {
   }
 });
 
-// Stock Adjustment (Penyesuaian Fisik / Stok Awal / Kosongkan)
-app.post('/api/stocks/adjust', (req, res) => {
+// Stock Adjustment (Admin only)
+app.post('/api/stocks/adjust', authenticate, requireAdmin, (req, res) => {
   try {
     const { product_id, new_actual_stock, notes } = req.body;
     if (product_id === undefined || new_actual_stock === undefined || new_actual_stock === null || new_actual_stock === '') {
@@ -793,8 +1169,8 @@ app.post('/api/stocks/adjust', (req, res) => {
   }
 });
 
-// Kosongkan Seluruh Stok Semua Produk
-app.post('/api/stocks/clear-all', (req, res) => {
+// Clear All Stocks (Admin only)
+app.post('/api/stocks/clear-all', authenticate, requireAdmin, (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
     const { notes } = req.body || {};
@@ -825,9 +1201,9 @@ app.post('/api/stocks/clear-all', (req, res) => {
 });
 
 // ==========================================
-// 7. LABA - RUGI & FINANCIAL REPORT API
+// 7. LABA - RUGI & FINANCIAL REPORT API (Admin Only)
 // ==========================================
-app.get('/api/reports/laba-rugi', (req, res) => {
+app.get('/api/reports/laba-rugi', authenticate, requireAdmin, (req, res) => {
   try {
     const { start_date, end_date, product_id, customer_id } = req.query;
 
@@ -851,7 +1227,6 @@ app.get('/api/reports/laba-rugi', (req, res) => {
       params.push(customer_id);
     }
 
-    // Summary Card Stats
     const summary = db.prepare(`
       SELECT 
         COALESCE(SUM(ii.qty), 0) as total_qty,
@@ -867,7 +1242,6 @@ app.get('/api/reports/laba-rugi', (req, res) => {
       ? Number(((summary.total_laba / summary.total_jual) * 100).toFixed(2)) 
       : 0;
 
-    // Breakdown per Product
     const perProduct = db.prepare(`
       SELECT 
         p.id as product_id,
@@ -890,7 +1264,6 @@ app.get('/api/reports/laba-rugi', (req, res) => {
       p.margin_pct = p.total_jual > 0 ? Number(((p.total_laba / p.total_jual) * 100).toFixed(2)) : 0;
     });
 
-    // Breakdown per Customer
     const perCustomer = db.prepare(`
       SELECT 
         c.id as customer_id,
@@ -916,13 +1289,12 @@ app.get('/api/reports/laba-rugi', (req, res) => {
 });
 
 // ==========================================
-// 8. EXCEL EXPORT API
+// 8. EXCEL EXPORT API (Admin Only)
 // ==========================================
-app.get('/api/export/excel', (req, res) => {
+app.get('/api/export/excel', authenticate, requireAdmin, (req, res) => {
   try {
     const wb = XLSX.utils.book_new();
 
-    // 1. Sheet Laba-Rugi
     const lrData = db.prepare(`
       SELECT 
         p.name as "Nama Produk",
@@ -938,7 +1310,6 @@ app.get('/api/export/excel', (req, res) => {
     const wsLR = XLSX.utils.json_to_sheet(lrData);
     XLSX.utils.book_append_sheet(wb, wsLR, 'Laba-Rugi');
 
-    // 2. Sheet Transaksi / Nota
     const txData = db.prepare(`
       SELECT 
         i.date as "Tanggal",
@@ -959,7 +1330,6 @@ app.get('/api/export/excel', (req, res) => {
     const wsTX = XLSX.utils.json_to_sheet(txData);
     XLSX.utils.book_append_sheet(wb, wsTX, 'Riwayat Transaksi');
 
-    // 3. Sheet Stock Opname
     const stockData = db.prepare(`
       SELECT 
         p.name as "Nama Produk",

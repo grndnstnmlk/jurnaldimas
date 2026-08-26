@@ -1,117 +1,176 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext({
+  user: null,
+  token: '',
   isAuthenticated: false,
+  isAdmin: false,
+  isSales: false,
   isLoading: true,
   login: async () => {},
+  register: async () => {},
+  loginWithGoogle: async () => {},
   logout: () => {},
-  changeAccessCode: async () => {},
+  changePassword: async () => {},
   authFetch: async () => {}
 });
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(() => localStorage.getItem('master_pos_token') || '');
+  const [token, setToken] = useState(() => localStorage.getItem('master_pos_auth_token') || '');
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('master_pos_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  const isAdmin = user?.role === 'admin';
+  const isSales = user?.role === 'sales';
+
   useEffect(() => {
-    verifyStoredToken();
+    verifyStoredSession();
   }, [token]);
 
-  const verifyStoredToken = async () => {
+  const verifyStoredSession = async () => {
     if (!token) {
+      setUser(null);
       setIsAuthenticated(false);
       setIsLoading(false);
       return;
     }
 
     try {
-      const res = await fetch('/api/auth/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token })
+      const res = await fetch('/api/auth/me', {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
-      if (data.valid) {
+      if (data.success && data.user) {
+        setUser(data.user);
+        localStorage.setItem('master_pos_user', JSON.stringify(data.user));
         setIsAuthenticated(true);
       } else {
-        localStorage.removeItem('master_pos_token');
-        setToken('');
-        setIsAuthenticated(false);
+        logout();
       }
     } catch {
-      // If network offline or check fails, allow cached if present
-      setIsAuthenticated(!!token);
+      // If network fails offline, keep cached user if present
+      if (user && token) {
+        setIsAuthenticated(true);
+      } else {
+        logout();
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const login = async (code) => {
+  const login = async (email, password) => {
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code })
+        body: JSON.stringify({ email, password })
       });
       const data = await res.json();
-      if (data.success && data.token) {
-        localStorage.setItem('master_pos_token', data.token);
+      if (data.success && data.token && data.user) {
+        localStorage.setItem('master_pos_auth_token', data.token);
+        localStorage.setItem('master_pos_user', JSON.stringify(data.user));
         setToken(data.token);
+        setUser(data.user);
         setIsAuthenticated(true);
-        return { success: true };
+        return { success: true, user: data.user };
       } else {
-        return { success: false, error: data.error || 'Kode akses salah' };
+        return { success: false, error: data.error || 'Email atau password salah.' };
       }
     } catch (err) {
-      return { success: false, error: 'Koneksi gagal: ' + err.message };
+      return { success: false, error: 'Koneksi ke server gagal: ' + err.message };
+    }
+  };
+
+  const register = async (name, email, password, role = 'sales') => {
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password, role })
+      });
+      const data = await res.json();
+      if (data.success && data.token && data.user) {
+        localStorage.setItem('master_pos_auth_token', data.token);
+        localStorage.setItem('master_pos_user', JSON.stringify(data.user));
+        setToken(data.token);
+        setUser(data.user);
+        setIsAuthenticated(true);
+        return { success: true, user: data.user };
+      } else {
+        return { success: false, error: data.error || 'Gagal mendaftarkan akun.' };
+      }
+    } catch (err) {
+      return { success: false, error: 'Koneksi ke server gagal: ' + err.message };
+    }
+  };
+
+  const loginWithGoogle = async (googleData) => {
+    try {
+      const res = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(googleData)
+      });
+      const data = await res.json();
+      if (data.success && data.token && data.user) {
+        localStorage.setItem('master_pos_auth_token', data.token);
+        localStorage.setItem('master_pos_user', JSON.stringify(data.user));
+        setToken(data.token);
+        setUser(data.user);
+        setIsAuthenticated(true);
+        return { success: true, user: data.user };
+      } else {
+        return { success: false, error: data.error || 'Gagal login dengan akun Google.' };
+      }
+    } catch (err) {
+      return { success: false, error: 'Koneksi Google gagal: ' + err.message };
     }
   };
 
   const logout = () => {
-    localStorage.removeItem('master_pos_token');
+    localStorage.removeItem('master_pos_auth_token');
+    localStorage.removeItem('master_pos_user');
     setToken('');
+    setUser(null);
     setIsAuthenticated(false);
   };
 
-  const changeAccessCode = async (currentCode, newCode) => {
+  const changePassword = async (currentPassword, newPassword) => {
     try {
-      const res = await fetch('/api/auth/change-code', {
+      const res = await fetch('/api/auth/change-password', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ current_code: currentCode, new_code: newCode })
+        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword })
       });
       const data = await res.json();
-      if (data.success && data.token) {
-        localStorage.setItem('master_pos_token', data.token);
-        setToken(data.token);
+      if (data.success) {
         return { success: true, message: data.message };
       } else {
-        return { success: false, error: data.error || 'Gagal mengubah kode akses' };
+        return { success: false, error: data.error || 'Gagal memperbarui password.' };
       }
     } catch (err) {
       return { success: false, error: 'Koneksi gagal: ' + err.message };
     }
   };
 
-  // Helper fetch with auto Bearer token
-  const authFetch = (url, options = {}) => {
-    const headers = {
-      ...(options.headers || {}),
-      'Authorization': `Bearer ${token}`
-    };
-    return fetch(url, { ...options, headers });
-  };
-
-  // Override window.fetch to automatically include token for all /api calls
+  // Auto attach Bearer token to all /api fetch calls
   useEffect(() => {
     const originalFetch = window.fetch;
     window.fetch = async (input, init = {}) => {
-      let url = typeof input === 'string' ? input : input.url;
-      if (url.startsWith('/api') && !url.startsWith('/api/auth/login') && token) {
+      let url = typeof input === 'string' ? input : (input?.url || '');
+      if (url.startsWith('/api') && !url.startsWith('/api/auth/login') && !url.startsWith('/api/auth/register') && !url.startsWith('/api/auth/google') && token) {
         init = init || {};
         init.headers = {
           ...(init.headers || {}),
@@ -127,7 +186,19 @@ export function AuthProvider({ children }) {
   }, [token]);
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, login, logout, changeAccessCode, authFetch }}>
+    <AuthContext.Provider value={{
+      user,
+      token,
+      isAuthenticated,
+      isAdmin,
+      isSales,
+      isLoading,
+      login,
+      register,
+      loginWithGoogle,
+      logout,
+      changePassword
+    }}>
       {children}
     </AuthContext.Provider>
   );

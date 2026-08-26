@@ -14,10 +14,12 @@ import {
 } from 'lucide-react';
 import { formatRupiah, formatDate } from '../utils/format';
 import { useRealtime } from '../context/RealtimeContext';
+import { useAuth } from '../context/AuthContext';
 import ReceiptModal from '../components/ReceiptModal';
 
 export default function RiwayatNota({ setActiveTab }) {
   const { eventCounter } = useRealtime();
+  const { isAdmin } = useAuth();
   const [invoices, setInvoices] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -188,13 +190,15 @@ export default function RiwayatNota({ setActiveTab }) {
         </div>
         <div className="flex items-center gap-6">
           <div className="text-right">
-            <span className="text-[11px] text-slate-500 mr-1.5">Omset:</span>
+            <span className="text-[11px] text-slate-500 mr-1.5">Total Omset:</span>
             <span className="font-mono font-black text-sm text-emerald-600">{formatRupiah(totalOmsetFiltered)}</span>
           </div>
-          <div className="text-right">
-            <span className="text-[11px] text-slate-500 mr-1.5">Laba:</span>
-            <span className="font-mono font-black text-sm text-slate-800">{formatRupiah(totalLabaFiltered)}</span>
-          </div>
+          {isAdmin && (
+            <div className="text-right">
+              <span className="text-[11px] text-slate-500 mr-1.5">Laba Bersih:</span>
+              <span className="font-mono font-black text-sm text-slate-800">{formatRupiah(totalLabaFiltered)}</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -262,12 +266,15 @@ export default function RiwayatNota({ setActiveTab }) {
                             <Receipt className="w-3.5 h-3.5" />
                             <span>Cetak</span>
                           </button>
-                          <button
-                            onClick={() => handleDeleteInvoice(inv.id, inv.invoice_no)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {isAdmin && (
+                            <button
+                              onClick={() => handleDeleteInvoice(inv.id, inv.invoice_no)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                              title="Batalkan Nota (Hanya Admin)"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
