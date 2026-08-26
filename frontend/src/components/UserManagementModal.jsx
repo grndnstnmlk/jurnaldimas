@@ -140,14 +140,14 @@ export default function UserManagementModal({ onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
-      <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl border border-slate-200 flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+      <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] my-auto">
         
         {/* Header */}
-        <div className="p-4 sm:p-5 bg-gradient-to-r from-purple-700 to-indigo-800 text-white flex items-center justify-between">
+        <div className="p-4 sm:p-5 bg-gradient-to-r from-purple-700 to-indigo-800 text-white flex items-center justify-between shrink-0 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-2xl bg-white/10 backdrop-blur-md">
-              <Users className="w-6 h-6" />
+              <Users className="w-6 h-6 text-white" />
             </div>
             <div>
               <h2 className="font-extrabold text-base sm:text-lg">Manajemen Akun & Hak Akses</h2>
@@ -156,7 +156,7 @@ export default function UserManagementModal({ onClose }) {
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition"
+            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition text-white"
           >
             <X className="w-5 h-5" />
           </button>

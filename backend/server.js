@@ -675,14 +675,44 @@ app.get('/api/customers', authenticate, (req, res) => {
   }
 });
 
+app.get('/api/customers/:id', authenticate, (req, res) => {
+  try {
+    const custId = req.params.id;
+    const customer = db.prepare(`
+      SELECT c.*, 
+        COUNT(DISTINCT i.id) as total_invoices,
+        COALESCE(SUM(i.total_amount), 0) as total_transactions
+      FROM customers c
+      LEFT JOIN invoices i ON c.id = i.customer_id
+      WHERE c.id = ?
+      GROUP BY c.id
+    `).get(custId);
+
+    if (!customer) return res.status(404).json({ error: 'Pelanggan tidak ditemukan' });
+
+    // Recent 10 invoices of this customer
+    const recentInvoices = db.prepare(`
+      SELECT id, invoice_no, date, total_amount, created_at
+      FROM invoices
+      WHERE customer_id = ?
+      ORDER BY date DESC, id DESC
+      LIMIT 10
+    `).all(custId);
+
+    res.json({ ...customer, recentInvoices });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/customers', authenticate, requireAdmin, (req, res) => {
   try {
-    const { code, name, phone, address } = req.body;
+    const { code, name, phone, address, maps_url, notes } = req.body;
     if (!code || !name) return res.status(400).json({ error: 'Kode dan Nama pelanggan wajib diisi' });
 
     const info = db.prepare(`
-      INSERT INTO customers (code, name, phone, address) VALUES (?, ?, ?, ?)
-    `).run(code.trim().toUpperCase(), name.trim(), phone || '', address || '');
+      INSERT INTO customers (code, name, phone, address, maps_url, notes) VALUES (?, ?, ?, ?, ?, ?)
+    `).run(code.trim().toUpperCase(), name.trim(), phone || '', address || '', maps_url || '', notes || '');
 
     broadcast('CUSTOMER_CREATED', { id: info.lastInsertRowid, code, name });
     res.json({ success: true, id: info.lastInsertRowid });
@@ -693,12 +723,14 @@ app.post('/api/customers', authenticate, requireAdmin, (req, res) => {
 
 app.put('/api/customers/:id', authenticate, requireAdmin, (req, res) => {
   try {
-    const { code, name, phone, address } = req.body;
+    const { code, name, phone, address, maps_url, notes } = req.body;
     const custId = req.params.id;
 
     db.prepare(`
-      UPDATE customers SET code = ?, name = ?, phone = ?, address = ? WHERE id = ?
-    `).run(code.trim().toUpperCase(), name.trim(), phone || '', address || '', custId);
+      UPDATE customers 
+      SET code = ?, name = ?, phone = ?, address = ?, maps_url = ?, notes = ? 
+      WHERE id = ?
+    `).run(code.trim().toUpperCase(), name.trim(), phone || '', address || '', maps_url || '', notes || '', custId);
 
     broadcast('CUSTOMER_UPDATED', { id: custId, code, name });
     res.json({ success: true });
@@ -1347,6 +1379,109 @@ app.get('/api/export/excel', authenticate, requireAdmin, (req, res) => {
 
     const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
     res.setHeader('Content-Disposition', 'attachment; filename="JURNAL_KEUANGAN_MASTER_CIGARETTES.xlsx"');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Dedicated Export: Stock Opname to Excel
+app.get('/api/export/stocks', authenticate, (req, res) => {
+  try {
+    const wb = XLSX.utils.book_new();
+    const isAdmin = req.user.role === 'admin';
+
+    const stocks = db.prepare(`
+      SELECT 
+        p.name as "Nama Produk",
+        p.category as "Kategori",
+        ${isAdmin ? 'p.modal_price as "Harga Modal (HPP)",' : ''}
+        p.default_price as "Harga Jual Standar",
+        s.stok_awal as "Stok Awal",
+        s.stok_in as "Total Masuk",
+        s.stok_out as "Total Keluar",
+        s.stok_akhir as "Sisa Stok Akhir",
+        CASE 
+          WHEN s.stok_akhir <= 0 THEN 'KOSONG / HABIS'
+          WHEN s.stok_akhir < 10 THEN 'MENIPIS'
+          ELSE 'TERSEDIA'
+        END as "Status Stok"
+      FROM stocks s
+      JOIN products p ON s.product_id = p.id
+      WHERE p.is_active = 1
+      ORDER BY p.name ASC
+    `).all();
+
+    // Add numbering
+    const dataWithNo = stocks.map((s, idx) => ({ 'No': idx + 1, ...s }));
+    const ws = XLSX.utils.json_to_sheet(dataWithNo);
+    XLSX.utils.book_append_sheet(wb, ws, 'Stok Produk');
+
+    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    const today = new Date().toISOString().split('T')[0];
+    res.setHeader('Content-Disposition', `attachment; filename="STOK_MASTER_CIGARETTES_${today}.xlsx"`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Dedicated Export: Invoices / Transaksi to Excel
+app.get('/api/export/invoices', authenticate, (req, res) => {
+  try {
+    const { start_date, end_date, customer_id, search } = req.query;
+    const isAdmin = req.user.role === 'admin';
+
+    let query = `
+      SELECT 
+        i.date as "Tanggal",
+        i.invoice_no as "No Nota",
+        COALESCE(c.code, i.customer_name_manual) as "Kode Toko",
+        COALESCE(c.name, i.customer_name_manual, 'Umum') as "Nama Pelanggan",
+        p.name as "Nama Produk",
+        p.category as "Kategori",
+        ii.qty as "Qty",
+        ii.unit_price as "Harga Satuan (Rp)",
+        ii.subtotal as "Subtotal (Rp)"
+        ${isAdmin ? ', ii.modal_price as "Modal HPP (Rp)", ii.laba as "Laba (Rp)"' : ''}
+      FROM invoice_items ii
+      JOIN invoices i ON ii.invoice_id = i.id
+      JOIN products p ON ii.product_id = p.id
+      LEFT JOIN customers c ON i.customer_id = c.id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (start_date) {
+      query += ` AND i.date >= ?`;
+      params.push(start_date);
+    }
+    if (end_date) {
+      query += ` AND i.date <= ?`;
+      params.push(end_date);
+    }
+    if (customer_id) {
+      query += ` AND i.customer_id = ?`;
+      params.push(customer_id);
+    }
+    if (search) {
+      query += ` AND (i.invoice_no LIKE ? OR c.name LIKE ? OR c.code LIKE ?)`;
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
+
+    query += ` ORDER BY i.date DESC, i.id DESC`;
+    const rows = db.prepare(query).all(...params);
+
+    const dataWithNo = rows.map((r, idx) => ({ 'No': idx + 1, ...r }));
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(dataWithNo);
+    XLSX.utils.book_append_sheet(wb, ws, 'Riwayat Transaksi');
+
+    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+    const today = new Date().toISOString().split('T')[0];
+    res.setHeader('Content-Disposition', `attachment; filename="NOTA_TRANSAKSI_MASTER_CIGARETTES_${today}.xlsx"`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.send(buffer);
   } catch (err) {

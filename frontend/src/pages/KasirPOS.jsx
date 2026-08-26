@@ -14,20 +14,22 @@ import {
   Layers,
   Flame,
   CheckCircle2,
-  X,
   PlusCircle,
-  Tag
+  Tag,
+  MapPin
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { formatRupiah } from '../utils/format';
 import { useRealtime } from '../context/RealtimeContext';
 import ReceiptModal from '../components/ReceiptModal';
 import PaymentModal from '../components/PaymentModal';
+import CustomerDetailModal from '../components/CustomerDetailModal';
 
 export default function KasirPOS() {
   const { eventCounter } = useRealtime();
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
+  const [selectedDetailCustomerId, setSelectedDetailCustomerId] = useState(null);
   const [pricingMatrix, setPricingMatrix] = useState({});
 
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
@@ -221,9 +223,22 @@ export default function KasirPOS() {
             <Building2 className="w-3.5 h-3.5 text-emerald-600" />
             <span>Pilih Pelanggan / Toko</span>
           </label>
-          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-            {selectedCustomerObj ? `Kode: ${selectedCustomerObj.code}` : 'Umum'}
-          </span>
+          <div className="flex items-center gap-1.5">
+            {selectedCustomerObj && (
+              <button
+                type="button"
+                onClick={() => setSelectedDetailCustomerId(selectedCustomerObj.id)}
+                className="text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-md border border-blue-200 flex items-center gap-1 transition shadow-2xs"
+                title="Buka Nomor WA, Titik Google Maps, Alamat & Detail Toko Ini"
+              >
+                <MapPin className="w-3 h-3 text-blue-600" />
+                <span>Detail & Maps Toko</span>
+              </button>
+            )}
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+              {selectedCustomerObj ? `Kode: ${selectedCustomerObj.code}` : 'Umum'}
+            </span>
+          </div>
         </div>
 
         <div className="grid grid-cols-12 gap-2 items-center">
@@ -495,6 +510,15 @@ export default function KasirPOS() {
         <ReceiptModal
           invoice={completedInvoice}
           onClose={() => setCompletedInvoice(null)}
+        />
+      )}
+
+      {/* 8. CUSTOMER DETAIL MODAL (WhatsApp, Maps & Custom Edit) */}
+      {selectedDetailCustomerId && (
+        <CustomerDetailModal
+          customerId={selectedDetailCustomerId}
+          onClose={() => setSelectedDetailCustomerId(null)}
+          onCustomerUpdated={() => fetchCustomers()}
         />
       )}
 

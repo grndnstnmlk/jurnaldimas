@@ -16,7 +16,8 @@ import {
   RotateCcw,
   Package,
   Layers,
-  ArrowUpDown
+  ArrowUpDown,
+  FileSpreadsheet
 } from 'lucide-react';
 import { formatRupiah, formatDate } from '../utils/format';
 import { useRealtime } from '../context/RealtimeContext';
@@ -251,8 +252,25 @@ export default function StockOpname() {
   const selectedAdjustProduct = stocks.find(s => String(s.product_id) === String(adjustProductId));
   const adjustDiff = selectedAdjustProduct && adjustNewStock !== '' ? Number(adjustNewStock) - selectedAdjustProduct.stok_akhir : 0;
 
+  const handleExportExcel = async () => {
+    try {
+      const res = await fetch('/api/export/stocks');
+      if (!res.ok) throw new Error('Gagal mengunduh data stok Excel');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `STOK_MASTER_CIGARETTES_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5 space-y-4">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 space-y-4">
       
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -261,6 +279,14 @@ export default function StockOpname() {
           <p className="text-xs text-slate-500">Monitoring stok fisik, edit penyesuaian, barang masuk, dan kosongkan stok</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={handleExportExcel}
+            className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200 transition flex items-center gap-1.5 shadow-2xs"
+            title="Unduh data stok ke file Excel (.xlsx)"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            <span>Ekspor Excel</span>
+          </button>
           {isAdmin && (
             <>
               <button

@@ -10,12 +10,14 @@ import {
   Download,
   Filter,
   RefreshCw,
-  Plus
+  Plus,
+  FileSpreadsheet
 } from 'lucide-react';
 import { formatRupiah, formatDate } from '../utils/format';
 import { useRealtime } from '../context/RealtimeContext';
 import { useAuth } from '../context/AuthContext';
 import ReceiptModal from '../components/ReceiptModal';
+import CustomerDetailModal from '../components/CustomerDetailModal';
 
 export default function RiwayatNota({ setActiveTab }) {
   const { eventCounter } = useRealtime();
@@ -32,6 +34,7 @@ export default function RiwayatNota({ setActiveTab }) {
   const [expandedId, setExpandedId] = useState(null);
   const [expandedDetail, setExpandedDetail] = useState({});
   const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [selectedDetailCustomerId, setSelectedDetailCustomerId] = useState(null);
 
   useEffect(() => {
     fetchCustomers();
@@ -39,13 +42,13 @@ export default function RiwayatNota({ setActiveTab }) {
 
   useEffect(() => {
     fetchInvoices();
-  }, [eventCounter, selectedCustomerId, startDate, endDate]);
+  }, [selectedCustomerId, startDate, endDate, eventCounter]);
 
   const fetchCustomers = async () => {
     try {
       const res = await fetch('/api/customers');
-      const data = await res.json();
-      setCustomers(data);
+      const json = await res.json();
+      if (Array.isArray(json)) setCustomers(json);
     } catch (e) {
       console.error(e);
     }
@@ -55,16 +58,16 @@ export default function RiwayatNota({ setActiveTab }) {
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      if (search) params.append('search', search);
       if (selectedCustomerId) params.append('customer_id', selectedCustomerId);
       if (startDate) params.append('start_date', startDate);
       if (endDate) params.append('end_date', endDate);
+      if (search) params.append('search', search);
 
       const res = await fetch(`/api/invoices?${params.toString()}`);
-      const data = await res.json();
-      setInvoices(data);
-    } catch (err) {
-      console.error('Error fetching invoices:', err);
+      const json = await res.json();
+      if (Array.isArray(json)) setInvoices(json);
+    } catch (e) {
+      console.error(e);
     } finally {
       setLoading(false);
     }
@@ -73,32 +76,37 @@ export default function RiwayatNota({ setActiveTab }) {
   const toggleExpand = async (invId) => {
     if (expandedId === invId) {
       setExpandedId(null);
-    } else {
-      setExpandedId(invId);
-      if (!expandedDetail[invId]) {
-        try {
-          const res = await fetch(`/api/invoices/${invId}`);
-          const data = await res.json();
-          setExpandedDetail((prev) => ({ ...prev, [invId]: data }));
-        } catch (e) {
-          console.error(e);
-        }
+      return;
+    }
+
+    setExpandedId(invId);
+    if (!expandedDetail[invId]) {
+      try {
+        const res = await fetch(`/api/invoices/${invId}`);
+        const json = await res.json();
+        setExpandedDetail((prev) => ({ ...prev, [invId]: json }));
+      } catch (e) {
+        console.error(e);
       }
     }
   };
 
   const handleDeleteInvoice = async (invId, invNo) => {
-    if (window.confirm(`Apakah Anda yakin ingin membatalkan & menghapus Nota ${invNo}? Stok barang akan otomatis dikembalikan.`)) {
-      try {
-        const res = await fetch(`/api/invoices/${invId}`, { method: 'DELETE' });
-        const data = await res.json();
-        if (data.success) {
-          alert('Nota berhasil dibatalkan dan stok telah dikembalikan.');
-          fetchInvoices();
-        }
-      } catch (err) {
-        alert('Gagal menghapus nota: ' + err.message);
+    if (!confirm(`Batalkan dan hapus nota transaksi ${invNo}? Stok yang telah terjual akan dikembalikan ke gudang.`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/invoices/${invId}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (json.success) {
+        fetchInvoices();
+      } else {
+        alert(json.error || 'Gagal membatalkan nota.');
       }
+    } catch (e) {
+      console.error(e);
+      alert(e.message);
     }
   };
 
@@ -112,11 +120,34 @@ export default function RiwayatNota({ setActiveTab }) {
     }
   };
 
+  const handleExportExcel = async () => {
+    try {
+      const params = new URLSearchParams();
+      if (startDate) params.append('start_date', startDate);
+      if (endDate) params.append('end_date', endDate);
+      if (selectedCustomerId) params.append('customer_id', selectedCustomerId);
+      if (search) params.append('search', search);
+
+      const res = await fetch(`/api/export/invoices?${params.toString()}`);
+      if (!res.ok) throw new Error('Gagal mengunduh Excel riwayat transaksi');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `NOTA_TRANSAKSI_MASTER_CIGARETTES_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+
   const totalOmsetFiltered = invoices.reduce((acc, i) => acc + i.total_amount, 0);
   const totalLabaFiltered = invoices.reduce((acc, i) => acc + (i.total_laba || 0), 0);
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5 space-y-4">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 space-y-4">
       
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -124,13 +155,23 @@ export default function RiwayatNota({ setActiveTab }) {
           <h1 className="text-xl font-extrabold text-slate-900">Riwayat Nota & Transaksi</h1>
           <p className="text-xs text-slate-500">Daftar nota penjualan resmi CV. Master Cigarettes</p>
         </div>
-        <button
-          onClick={() => setActiveTab('kasir')}
-          className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-xs transition self-start"
-        >
-          <Plus className="w-4 h-4" />
-          <span>+ Transaksi Baru</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={handleExportExcel}
+            className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200 transition flex items-center gap-1.5 shadow-2xs"
+            title="Unduh riwayat transaksi ke file Excel (.xlsx)"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            <span>Ekspor Excel</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('kasir')}
+            className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-xs transition"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Transaksi Baru</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter Bar */}
@@ -211,7 +252,7 @@ export default function RiwayatNota({ setActiveTab }) {
                 <th className="w-8 px-4 py-3"></th>
                 <th className="px-4 py-3">No. Nota</th>
                 <th className="px-4 py-3">Tanggal</th>
-                <th className="px-4 py-3">Pelanggan</th>
+                <th className="px-4 py-3">Pelanggan / Toko</th>
                 <th className="px-4 py-3 text-center">Item</th>
                 <th className="px-4 py-3 text-right">Total Bayar</th>
                 <th className="px-4 py-3 text-center">Aksi</th>
@@ -240,14 +281,21 @@ export default function RiwayatNota({ setActiveTab }) {
                         {formatDate(inv.date)}
                       </td>
                       <td className="px-4 py-3">
-                        <span className="font-bold text-slate-900">
-                          {inv.customer_name || inv.customer_name_manual || 'Umum'}
-                        </span>
-                        {inv.customer_code && (
-                          <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-mono font-bold border border-emerald-100">
-                            {inv.customer_code}
+                        <button
+                          type="button"
+                          onClick={() => inv.customer_id && setSelectedDetailCustomerId(inv.customer_id)}
+                          className={`text-left inline-flex items-center gap-1.5 ${inv.customer_id ? 'hover:text-emerald-700 hover:underline cursor-pointer' : ''}`}
+                          title={inv.customer_id ? 'Klik untuk melihat WhatsApp, Google Maps & Detail Toko' : ''}
+                        >
+                          <span className="font-bold text-slate-900">
+                            {inv.customer_name || inv.customer_name_manual || 'Umum'}
                           </span>
-                        )}
+                          {inv.customer_code && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-mono font-bold border border-emerald-100">
+                              {inv.customer_code}
+                            </span>
+                          )}
+                        </button>
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
@@ -333,10 +381,23 @@ export default function RiwayatNota({ setActiveTab }) {
         </div>
       </div>
 
+      {/* Modal Cetak Nota */}
       {selectedInvoice && (
         <ReceiptModal
           invoice={selectedInvoice}
           onClose={() => setSelectedInvoice(null)}
+        />
+      )}
+
+      {/* Modal Detail Pelanggan (WA, Maps & Custom Edit) */}
+      {selectedDetailCustomerId && (
+        <CustomerDetailModal
+          customerId={selectedDetailCustomerId}
+          onClose={() => setSelectedDetailCustomerId(null)}
+          onCustomerUpdated={() => {
+            fetchCustomers();
+            fetchInvoices();
+          }}
         />
       )}
 

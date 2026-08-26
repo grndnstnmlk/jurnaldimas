@@ -17,15 +17,17 @@ import {
   Percent, 
   Share2, 
   Edit3, 
-  Copy, 
-  Zap, 
+  Copy,
+  Zap,
   CheckCircle2, 
   X,
-  ShieldCheck
+  ShieldCheck,
+  MapPin
 } from 'lucide-react';
 import { formatRupiah } from '../utils/format';
 import { useRealtime } from '../context/RealtimeContext';
 import { useAuth } from '../context/AuthContext';
+import CustomerDetailModal from '../components/CustomerDetailModal';
 
 export default function MatriksHarga() {
   const { eventCounter } = useRealtime();
@@ -39,6 +41,7 @@ export default function MatriksHarga() {
   // View Mode: 'customer_pricelist' (Shareable Customer View & Custom Price Editor) or 'matrix' (Internal Admin View)
   const [viewMode, setViewMode] = useState('customer_pricelist');
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const [selectedDetailCustomerId, setSelectedDetailCustomerId] = useState(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedPrices, setEditedPrices] = useState({});
   const [isSaving, setIsSaving] = useState(false);
@@ -422,9 +425,17 @@ export default function MatriksHarga() {
                   </>
                 )}
 
-                {/* WhatsApp & Print (Available for both Sales and Admin) */}
+                {/* Detail Toko, WhatsApp & Print (Available for both Sales and Admin) */}
                 {!isEditMode && (
                   <>
+                    <button
+                      onClick={() => selectedCustomerId && setSelectedDetailCustomerId(selectedCustomerId)}
+                      className="p-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold border border-blue-200 transition flex items-center gap-1 shadow-2xs"
+                      title="Buka Nomor WA, Titik Google Maps, Alamat & Detail Toko"
+                    >
+                      <MapPin className="w-4 h-4 text-blue-600" />
+                      <span className="text-xs font-bold">Detail & Maps Toko</span>
+                    </button>
                     <button
                       onClick={handleShareWhatsApp}
                       className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold border border-emerald-200 transition flex items-center gap-1"
@@ -794,6 +805,15 @@ export default function MatriksHarga() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal Detail Pelanggan (WhatsApp, Google Maps & Custom Edit) */}
+      {selectedDetailCustomerId && (
+        <CustomerDetailModal
+          customerId={selectedDetailCustomerId}
+          onClose={() => setSelectedDetailCustomerId(null)}
+          onCustomerUpdated={() => fetchMatrix()}
+        />
       )}
 
     </div>

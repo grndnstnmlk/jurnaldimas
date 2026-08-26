@@ -73,6 +73,8 @@ function initDb() {
       name TEXT NOT NULL,
       phone TEXT DEFAULT '',
       address TEXT DEFAULT '',
+      maps_url TEXT DEFAULT '',
+      notes TEXT DEFAULT '',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -148,6 +150,10 @@ function initDb() {
       value TEXT NOT NULL
     );
   `);
+
+  // Safe table column migrations
+  try { db.exec("ALTER TABLE customers ADD COLUMN maps_url TEXT DEFAULT ''"); } catch (e) {}
+  try { db.exec("ALTER TABLE customers ADD COLUMN notes TEXT DEFAULT ''"); } catch (e) {}
 
   // Default Host Administrator & Sales user accounts
   seedDefaultUsers();
