@@ -82,9 +82,9 @@ export default function LockScreen() {
 
     const simulatedGoogleUser = {
       profile: {
-        email: prompt('Masukkan Alamat Email Google Anda (contoh: sales@gmail.com):', 'sales.baru@gmail.com') || '',
+        email: prompt('Masukkan Alamat Email Google Anda:', '') || '',
         name: 'Pengguna Akun Google',
-        picture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'
+        picture: ''
       }
     };
 
@@ -96,16 +96,6 @@ export default function LockScreen() {
     const res = await loginWithGoogle(simulatedGoogleUser);
     if (!res.success) {
       setError(res.error || 'Gagal login menggunakan akun Google.');
-    }
-    setIsSubmitting(false);
-  };
-
-  const handleQuickLogin = async (email, password) => {
-    setIsSubmitting(true);
-    setError('');
-    const res = await login(email, password);
-    if (!res.success) {
-      setError(res.error || 'Gagal login otomatis.');
     }
     setIsSubmitting(false);
   };
@@ -222,8 +212,8 @@ export default function LockScreen() {
                   required
                   value={loginEmail}
                   onChange={(e) => { setLoginEmail(e.target.value); setError(''); }}
-                  placeholder="admin@masterpos.com atau sales@masterpos.com"
-                  className="w-full bg-slate-50 text-slate-900 pl-10 pr-4 py-2.5 rounded-2xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:border-emerald-600 focus:bg-white focus:ring-1 focus:ring-emerald-600 transition placeholder:text-slate-400"
+                  placeholder=""
+                  className="w-full bg-slate-50 text-slate-900 pl-10 pr-4 py-2.5 rounded-2xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:border-emerald-600 focus:bg-white focus:ring-1 focus:ring-emerald-600 transition"
                 />
               </div>
             </div>
@@ -239,8 +229,8 @@ export default function LockScreen() {
                   required
                   value={loginPassword}
                   onChange={(e) => { setLoginPassword(e.target.value); setError(''); }}
-                  placeholder="••••••••"
-                  className="w-full bg-slate-50 text-slate-900 pl-10 pr-10 py-2.5 rounded-2xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:border-emerald-600 focus:bg-white focus:ring-1 focus:ring-emerald-600 transition placeholder:text-slate-400 font-mono"
+                  placeholder=""
+                  className="w-full bg-slate-50 text-slate-900 pl-10 pr-10 py-2.5 rounded-2xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:border-emerald-600 focus:bg-white focus:ring-1 focus:ring-emerald-600 transition font-mono"
                 />
                 <button
                   type="button"
@@ -283,8 +273,8 @@ export default function LockScreen() {
                   required
                   value={regName}
                   onChange={(e) => { setRegName(e.target.value); setError(''); }}
-                  placeholder="Nama Lengkap Sales"
-                  className="w-full bg-slate-50 text-slate-900 pl-10 pr-4 py-2.5 rounded-2xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:border-emerald-600 focus:bg-white focus:ring-1 focus:ring-emerald-600 transition placeholder:text-slate-400"
+                  placeholder=""
+                  className="w-full bg-slate-50 text-slate-900 pl-10 pr-4 py-2.5 rounded-2xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:border-emerald-600 focus:bg-white focus:ring-1 focus:ring-emerald-600 transition"
                 />
               </div>
             </div>
@@ -300,8 +290,8 @@ export default function LockScreen() {
                   required
                   value={regEmail}
                   onChange={(e) => { setRegEmail(e.target.value); setError(''); }}
-                  placeholder="email.sales@gmail.com"
-                  className="w-full bg-slate-50 text-slate-900 pl-10 pr-4 py-2.5 rounded-2xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:border-emerald-600 focus:bg-white focus:ring-1 focus:ring-emerald-600 transition placeholder:text-slate-400"
+                  placeholder=""
+                  className="w-full bg-slate-50 text-slate-900 pl-10 pr-4 py-2.5 rounded-2xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:border-emerald-600 focus:bg-white focus:ring-1 focus:ring-emerald-600 transition"
                 />
               </div>
             </div>
@@ -318,8 +308,8 @@ export default function LockScreen() {
                   minLength={6}
                   value={regPassword}
                   onChange={(e) => { setRegPassword(e.target.value); setError(''); }}
-                  placeholder="Minimal 6 karakter"
-                  className="w-full bg-slate-50 text-slate-900 pl-10 pr-10 py-2.5 rounded-2xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:border-emerald-600 focus:bg-white focus:ring-1 focus:ring-emerald-600 transition placeholder:text-slate-400 font-mono"
+                  placeholder=""
+                  className="w-full bg-slate-50 text-slate-900 pl-10 pr-10 py-2.5 rounded-2xl border border-slate-200 text-xs sm:text-sm focus:outline-none focus:border-emerald-600 focus:bg-white focus:ring-1 focus:ring-emerald-600 transition font-mono"
                 />
                 <button
                   type="button"
@@ -341,29 +331,6 @@ export default function LockScreen() {
             </button>
           </form>
         )}
-
-        {/* Quick Demo Access Buttons */}
-        <div className="pt-3 border-t border-slate-100 space-y-2">
-          <p className="text-[10px] text-center uppercase tracking-wider font-extrabold text-slate-400">
-            Akses Cepat (Demo / Default Login)
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('admin@masterpos.com', 'admin123')}
-              className="py-2 px-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-800 font-bold text-[11px] flex items-center justify-center gap-1.5 transition active:scale-95 text-center"
-            >
-              <span>👑 Host Admin</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('sales@masterpos.com', 'sales123')}
-              className="py-2 px-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 font-bold text-[11px] flex items-center justify-center gap-1.5 transition active:scale-95 text-center"
-            >
-              <span>💼 Akun Sales</span>
-            </button>
-          </div>
-        </div>
 
       </div>
 
