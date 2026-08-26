@@ -12,11 +12,77 @@ import {
   Check, 
   Calendar,
   AlertCircle,
-  FileSpreadsheet
+  Crosshair,
+  Compass,
+  Navigation
 } from 'lucide-react';
 import { formatRupiah, formatDate } from '../utils/format';
 import { useAuth } from '../context/AuthContext';
 import { useRealtime } from '../context/RealtimeContext';
+
+// Robust Google Maps URL Parser (Supports raw coordinates, DMS, short links, geo URIs, and full URLs)
+export const parseGoogleMapsUrl = (input, fallbackAddress = '', customerName = '') => {
+  const raw = String(input || '').trim();
+  
+  if (raw) {
+    // 1. If it's already a full HTTP/HTTPS URL
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      return raw;
+    }
+    
+    // 2. If it's a domain without protocol (e.g., maps.app.goo.gl/..., goo.gl/maps/..., maps.google.com/...)
+    if (
+      raw.startsWith('maps.app.goo.gl') || 
+      raw.startsWith('goo.gl/maps') || 
+      raw.startsWith('google.com/maps') || 
+      raw.startsWith('www.google.com/maps') ||
+      raw.startsWith('maps.google.')
+    ) {
+      return `https://${raw}`;
+    }
+
+    // 3. If it starts with geo: (e.g., geo:-7.2575,112.7521)
+    if (raw.toLowerCase().startsWith('geo:')) {
+      const coords = raw.replace(/^geo:/i, '').trim();
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(coords)}`;
+    }
+
+    // 4. If it's coordinates: e.g. "-7.2575, 112.7521" or "-7.2575,112.7521" or "-7.2575 112.7521"
+    const coordPattern = /([-+]?\d{1,2}(?:\.\d+)?)[,\s]+([-+]?\d{1,3}(?:\.\d+)?)/;
+    const coordMatch = raw.match(coordPattern);
+    if (coordMatch) {
+      const lat = coordMatch[1];
+      const lng = coordMatch[2];
+      return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+    }
+
+    // 5. If it contains DMS coordinates e.g. 7°15'27.0"S 112°45'07.6"E
+    if (raw.includes('°') || raw.includes('"') || raw.includes("'")) {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(raw)}`;
+    }
+
+    // 6. Generic query / location name
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(raw)}`;
+  }
+
+  // Fallback to text address or store name
+  const query = (fallbackAddress || customerName || '').trim();
+  if (query) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+  }
+
+  return null;
+};
+
+// Helper to format WhatsApp link
+export const parseWhatsAppLink = (phone) => {
+  if (!phone) return null;
+  let clean = String(phone).replace(/\D/g, '');
+  if (clean.startsWith('0')) {
+    clean = '62' + clean.slice(1);
+  }
+  return clean ? `https://wa.me/${clean}` : null;
+};
 
 export default function CustomerDetailModal({ customerId, onClose, onCustomerUpdated }) {
   const { isAdmin } = useAuth();
@@ -35,6 +101,7 @@ export default function CustomerDetailModal({ customerId, onClose, onCustomerUpd
   const [editNotes, setEditNotes] = useState('');
 
   const [saving, setSaving] = useState(false);
+  const [isGettingGps, setIsGettingGps] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
@@ -108,26 +175,52 @@ export default function CustomerDetailModal({ customerId, onClose, onCustomerUpd
     }
   };
 
-  // Helper to format WhatsApp link
-  const getWhatsAppLink = (phone) => {
-    if (!phone) return null;
-    let clean = phone.replace(/\D/g, '');
-    if (clean.startsWith('0')) {
-      clean = '62' + clean.slice(1);
+  // Get current device GPS coordinates
+  const handleGetCurrentGps = () => {
+    if (!navigator.geolocation) {
+      alert('Perangkat Anda tidak mendukung fitur Geolocation GPS.');
+      return;
     }
-    return `https://wa.me/${clean}`;
+
+    setIsGettingGps(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude.toFixed(6);
+        const lng = position.coords.longitude.toFixed(6);
+        setEditMapsUrl(`${lat}, ${lng}`);
+        setIsGettingGps(false);
+        alert(`Titik koordinat berhasil didapatkan: ${lat}, ${lng}`);
+      },
+      (err) => {
+        setIsGettingGps(false);
+        alert('Gagal mengambil titik koordinat GPS: ' + err.message + '. Pastikan izin lokasi aktif.');
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   };
 
-  // Helper to format Google Maps link
-  const getMapsLink = (mapsUrl, address) => {
-    if (mapsUrl && (mapsUrl.startsWith('http://') || mapsUrl.startsWith('https://'))) {
-      return mapsUrl;
+  // Open maps in new tab
+  const handleOpenMaps = (mapsUrl, address, name) => {
+    const targetUrl = parseGoogleMapsUrl(mapsUrl, address, name);
+    if (targetUrl) {
+      window.open(targetUrl, '_blank', 'noopener,noreferrer');
+    } else {
+      alert('Alamat atau titik koordinat Google Maps belum diisi.');
     }
-    if (address) {
-      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
-    }
-    return null;
   };
+
+  // Test maps link in edit mode
+  const handleTestMapsInEdit = () => {
+    const testUrl = parseGoogleMapsUrl(editMapsUrl, editAddress, editName);
+    if (testUrl) {
+      window.open(testUrl, '_blank', 'noopener,noreferrer');
+    } else {
+      alert('Masukkan titik koordinat atau link Google Maps terlebih dahulu untuk diuji.');
+    }
+  };
+
+  const currentMapsUrl = customer ? parseGoogleMapsUrl(customer.maps_url, customer.address, customer.name) : null;
+  const currentWaUrl = customer ? parseWhatsAppLink(customer.phone) : null;
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
@@ -141,7 +234,7 @@ export default function CustomerDetailModal({ customerId, onClose, onCustomerUpd
             </div>
             <div>
               <h2 className="font-extrabold text-base sm:text-lg">Detail Pelanggan / Toko</h2>
-              <p className="text-xs text-emerald-100 font-medium">Informasi kontak, lokasi maps, & riwayat nota</p>
+              <p className="text-xs text-emerald-100 font-medium">Informasi kontak, titik navigasi maps, & riwayat nota</p>
             </div>
           </div>
           <button
@@ -217,9 +310,9 @@ export default function CustomerDetailModal({ customerId, onClose, onCustomerUpd
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-slate-200">
                       
                       {/* WhatsApp Button */}
-                      {customer.phone ? (
+                      {currentWaUrl ? (
                         <a
-                          href={getWhatsAppLink(customer.phone)}
+                          href={currentWaUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="p-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition active:scale-95"
@@ -235,17 +328,16 @@ export default function CustomerDetailModal({ customerId, onClose, onCustomerUpd
                       )}
 
                       {/* Google Maps Button */}
-                      {(customer.maps_url || customer.address) ? (
-                        <a
-                          href={getMapsLink(customer.maps_url, customer.address)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition active:scale-95"
+                      {currentMapsUrl ? (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenMaps(customer.maps_url, customer.address, customer.name)}
+                          className="p-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition active:scale-95 cursor-pointer"
                         >
-                          <MapPin className="w-4 h-4 shrink-0" />
+                          <MapPin className="w-4 h-4 shrink-0 text-amber-300" />
                           <span>Buka Titik Google Maps</span>
                           <ExternalLink className="w-3.5 h-3.5 opacity-80" />
-                        </a>
+                        </button>
                       ) : (
                         <div className="p-3 rounded-xl bg-slate-100 text-slate-400 text-xs font-medium flex items-center justify-center gap-2 border border-slate-200">
                           <MapPin className="w-4 h-4 shrink-0" />
@@ -254,6 +346,17 @@ export default function CustomerDetailModal({ customerId, onClose, onCustomerUpd
                       )}
 
                     </div>
+
+                    {/* Coordinate / Map URL Indicator */}
+                    {customer.maps_url && (
+                      <div className="p-2.5 rounded-xl bg-blue-50/80 border border-blue-100 text-xs text-blue-900 flex items-start gap-2">
+                        <Navigation className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
+                        <div className="overflow-hidden">
+                          <span className="font-bold text-[11px]">Titik Koordinat / Link:</span>
+                          <p className="font-mono text-[11px] text-blue-700 truncate">{customer.maps_url}</p>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Address & Notes Details */}
                     <div className="space-y-2 pt-2 text-xs">
@@ -376,18 +479,47 @@ export default function CustomerDetailModal({ customerId, onClose, onCustomerUpd
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1 flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-blue-600" />
-                      <span>Titik Lokasi Google Maps (Link URL Maps)</span>
-                    </label>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Titik Koordinat / Link Google Maps</span>
+                      </label>
+                      
+                      {/* GPS Helper Button */}
+                      <button
+                        type="button"
+                        onClick={handleGetCurrentGps}
+                        disabled={isGettingGps}
+                        className="text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-lg border border-blue-200 flex items-center gap-1 transition disabled:opacity-50"
+                        title="Ambil titik koordinat latitude, longitude dari GPS perangkat Anda saat ini"
+                      >
+                        <Crosshair className="w-3 h-3 text-blue-600" />
+                        <span>{isGettingGps ? 'Mengambil GPS...' : 'Ambil GPS Saat Ini'}</span>
+                      </button>
+                    </div>
+
                     <input
                       type="text"
                       value={editMapsUrl}
                       onChange={(e) => setEditMapsUrl(e.target.value)}
-                      placeholder="Contoh: https://maps.app.goo.gl/... atau koordinat lat,lng"
-                      className="w-full bg-slate-50 text-slate-900 px-3.5 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:border-emerald-600 focus:bg-white"
+                      placeholder="Contoh: -7.257543, 112.752132 atau https://maps.app.goo.gl/..."
+                      className="w-full bg-slate-50 text-slate-900 px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:outline-none focus:border-emerald-600 focus:bg-white"
                     />
+                    
+                    <div className="flex items-center justify-between text-[10px] text-slate-400 px-1">
+                      <span>Bisa diisi: <b>Titik Koordinat</b> (misal: <code>-7.2575, 112.7521</code>) atau <b>Link Maps</b></span>
+                      {editMapsUrl && (
+                        <button
+                          type="button"
+                          onClick={handleTestMapsInEdit}
+                          className="text-blue-600 font-bold hover:underline flex items-center gap-0.5"
+                        >
+                          <span>Uji Buka Titik Maps</span>
+                          <ExternalLink className="w-2.5 h-2.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <div>
