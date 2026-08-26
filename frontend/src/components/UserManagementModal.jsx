@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Users, 
   UserPlus, 
@@ -139,8 +140,8 @@ export default function UserManagementModal({ onClose }) {
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[100] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-[99999] bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
       <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] my-auto">
         
         {/* Header */}
@@ -359,6 +360,7 @@ export default function UserManagementModal({ onClose }) {
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
