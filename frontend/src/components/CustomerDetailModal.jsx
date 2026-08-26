@@ -15,7 +15,13 @@ import {
   AlertCircle,
   Crosshair,
   Compass,
-  Navigation
+  Navigation,
+  HelpCircle,
+  ClipboardPaste,
+  Search,
+  Settings,
+  Smartphone,
+  RefreshCw
 } from 'lucide-react';
 import { formatRupiah, formatDate } from '../utils/format';
 import { useAuth } from '../context/AuthContext';
@@ -75,6 +81,32 @@ export const parseGoogleMapsUrl = (input, fallbackAddress = '', customerName = '
   return null;
 };
 
+// Helper to clean and extract valid maps link or coords from pasted text
+export const extractCleanMapsInput = (val) => {
+  if (!val) return '';
+  const text = String(val).trim();
+
+  // 1. Check if contains http/https URL (e.g., "Pin dipasang https://maps.app.goo.gl/xyz")
+  const urlMatch = text.match(/https?:\/\/[^\s]+/i);
+  if (urlMatch) {
+    return urlMatch[0].trim();
+  }
+
+  // 2. Check if contains maps.app.goo.gl without https
+  const shortLinkMatch = text.match(/maps\.app\.goo\.gl\/[^\s]+/i);
+  if (shortLinkMatch) {
+    return `https://${shortLinkMatch[0].trim()}`;
+  }
+
+  // 3. Check if contains latitude, longitude coordinates (e.g. "-7.257543, 112.752132")
+  const coordMatch = text.match(/[-+]?\d{1,2}(?:\.\d+)?[,\s]+[-+]?\d{1,3}(?:\.\d+)?/);
+  if (coordMatch && !text.startsWith('http')) {
+    return coordMatch[0].trim();
+  }
+
+  return text;
+};
+
 // Helper to format WhatsApp link
 export const parseWhatsAppLink = (phone) => {
   if (!phone) return null;
@@ -103,6 +135,8 @@ export default function CustomerDetailModal({ customerId, onClose, onCustomerUpd
 
   const [saving, setSaving] = useState(false);
   const [isGettingGps, setIsGettingGps] = useState(false);
+  const [showGpsGuide, setShowGpsGuide] = useState(false);
+  const [gpsErrorType, setGpsErrorType] = useState('denied'); // 'denied' | 'unavailable' | 'unsupported'
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
@@ -155,7 +189,7 @@ export default function CustomerDetailModal({ customerId, onClose, onCustomerUpd
           code: editCode.trim().toUpperCase(),
           phone: editPhone.trim(),
           address: editAddress.trim(),
-          maps_url: editMapsUrl.trim(),
+          maps_url: extractCleanMapsInput(editMapsUrl),
           notes: editNotes.trim()
         })
       });
@@ -176,27 +210,52 @@ export default function CustomerDetailModal({ customerId, onClose, onCustomerUpd
     }
   };
 
-  // Get current device GPS coordinates
+  // Smart GPS Getter with Automatic High & Low Accuracy Fallback
   const handleGetCurrentGps = () => {
     if (!navigator.geolocation) {
-      alert('Perangkat Anda tidak mendukung fitur Geolocation GPS.');
+      setGpsErrorType('unsupported');
+      setShowGpsGuide(true);
       return;
     }
 
     setIsGettingGps(true);
+    setErrorMsg('');
+
+    // Step 1: Try high accuracy first (device GPS)
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const lat = position.coords.latitude.toFixed(6);
         const lng = position.coords.longitude.toFixed(6);
         setEditMapsUrl(`${lat}, ${lng}`);
         setIsGettingGps(false);
-        alert(`Titik koordinat berhasil didapatkan: ${lat}, ${lng}`);
+        setSuccessMsg(`Titik koordinat GPS berhasil didapatkan: ${lat}, ${lng}`);
       },
       (err) => {
-        setIsGettingGps(false);
-        alert('Gagal mengambil titik koordinat GPS: ' + err.message + '. Pastikan izin lokasi aktif.');
+        // If denied permission (code 1), show visual guide
+        if (err.code === 1) {
+          setIsGettingGps(false);
+          setGpsErrorType('denied');
+          setShowGpsGuide(true);
+        } else {
+          // If timeout or position unavailable (code 2 or 3), try low accuracy fallback (cell/wifi)
+          navigator.geolocation.getCurrentPosition(
+            (pos2) => {
+              const lat = pos2.coords.latitude.toFixed(6);
+              const lng = pos2.coords.longitude.toFixed(6);
+              setEditMapsUrl(`${lat}, ${lng}`);
+              setIsGettingGps(false);
+              setSuccessMsg(`Titik koordinat GPS berhasil didapatkan: ${lat}, ${lng}`);
+            },
+            (err2) => {
+              setIsGettingGps(false);
+              setGpsErrorType(err2.code === 1 ? 'denied' : 'unavailable');
+              setShowGpsGuide(true);
+            },
+            { enableHighAccuracy: false, timeout: 20000, maximumAge: 60000 }
+          );
+        }
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
     );
   };
 
@@ -207,6 +266,33 @@ export default function CustomerDetailModal({ customerId, onClose, onCustomerUpd
       window.open(targetUrl, '_blank', 'noopener,noreferrer');
     } else {
       alert('Alamat atau titik koordinat Google Maps belum diisi.');
+    }
+  };
+
+  // Open Google Maps search to pick/find a store location
+  const handleOpenGoogleMapsPicker = () => {
+    const query = editAddress || editName || 'Indonesia';
+    const pickerUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+    window.open(pickerUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  // Paste from clipboard helper
+  const handlePasteClipboard = async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          const cleaned = extractCleanMapsInput(text);
+          setEditMapsUrl(cleaned);
+          setSuccessMsg('Titik koordinat/link berhasil ditempel dari clipboard!');
+        } else {
+          alert('Clipboard Anda masih kosong.');
+        }
+      } else {
+        alert('Fitur baca clipboard otomatis tidak didukung oleh browser Anda. Silakan tekan lama pada kotak teks lalu pilih Tempel / Paste.');
+      }
+    } catch (e) {
+      alert('Silakan tekan lama pada kotak teks lalu pilih Tempel / Paste.');
     }
   };
 
@@ -480,43 +566,71 @@ export default function CustomerDetailModal({ customerId, onClose, onCustomerUpd
                     />
                   </div>
 
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[11px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1">
+                  {/* Enhanced Maps / GPS Location Section */}
+                  <div className="space-y-2 p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1">
                         <MapPin className="w-3.5 h-3.5 text-blue-600" />
                         <span>Titik Koordinat / Link Google Maps</span>
                       </label>
                       
-                      {/* GPS Helper Button */}
-                      <button
-                        type="button"
-                        onClick={handleGetCurrentGps}
-                        disabled={isGettingGps}
-                        className="text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-lg border border-blue-200 flex items-center gap-1 transition disabled:opacity-50"
-                        title="Ambil titik koordinat latitude, longitude dari GPS perangkat Anda saat ini"
-                      >
-                        <Crosshair className="w-3 h-3 text-blue-600" />
-                        <span>{isGettingGps ? 'Mengambil GPS...' : 'Ambil GPS Saat Ini'}</span>
-                      </button>
+                      {/* Action buttons bar */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {/* Auto GPS button */}
+                        <button
+                          type="button"
+                          onClick={handleGetCurrentGps}
+                          disabled={isGettingGps}
+                          className="text-[10px] font-bold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-2 py-1 rounded-lg border border-emerald-300 flex items-center gap-1 transition disabled:opacity-50 active:scale-95"
+                          title="Ambil titik koordinat latitude, longitude dari GPS HP Anda saat ini"
+                        >
+                          <Crosshair className={`w-3 h-3 text-emerald-600 ${isGettingGps ? 'animate-spin' : ''}`} />
+                          <span>{isGettingGps ? 'Mencari GPS...' : '📍 Ambil GPS HP'}</span>
+                        </button>
+
+                        {/* Open Google Maps search button */}
+                        <button
+                          type="button"
+                          onClick={handleOpenGoogleMapsPicker}
+                          className="text-[10px] font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded-lg border border-blue-300 flex items-center gap-1 transition active:scale-95"
+                          title="Buka aplikasi Google Maps untuk mencari toko dan menyalin titik lokasi"
+                        >
+                          <Search className="w-3 h-3 text-blue-600" />
+                          <span>Cari di Maps</span>
+                        </button>
+
+                        {/* Clipboard paste helper */}
+                        <button
+                          type="button"
+                          onClick={handlePasteClipboard}
+                          className="text-[10px] font-bold text-slate-700 bg-slate-200 hover:bg-slate-300 px-2 py-1 rounded-lg border border-slate-300 flex items-center gap-1 transition active:scale-95"
+                          title="Tempel link/koordinat yang sudah Anda salin dari Google Maps"
+                        >
+                          <ClipboardPaste className="w-3 h-3 text-slate-600" />
+                          <span>Tempel</span>
+                        </button>
+                      </div>
                     </div>
 
-                    <input
-                      type="text"
-                      value={editMapsUrl}
-                      onChange={(e) => setEditMapsUrl(e.target.value)}
-                      placeholder="Contoh: -7.257543, 112.752132 atau https://maps.app.goo.gl/..."
-                      className="w-full bg-slate-50 text-slate-900 px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:outline-none focus:border-emerald-600 focus:bg-white"
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={editMapsUrl}
+                        onChange={(e) => setEditMapsUrl(extractCleanMapsInput(e.target.value))}
+                        placeholder="Contoh: -7.257543, 112.752132 atau https://maps.app.goo.gl/..."
+                        className="w-full bg-white text-slate-900 px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-mono focus:outline-none focus:border-emerald-600"
+                      />
+                    </div>
                     
-                    <div className="flex items-center justify-between text-[10px] text-slate-400 px-1">
-                      <span>Bisa diisi: <b>Titik Koordinat</b> (misal: <code>-7.2575, 112.7521</code>) atau <b>Link Maps</b></span>
+                    <div className="flex items-center justify-between text-[10px] text-slate-500 px-0.5">
+                      <span>Bisa diisi: <b>Koordinat</b> (<code>-7.2575, 112.7521</code>) atau <b>Link Maps</b></span>
                       {editMapsUrl && (
                         <button
                           type="button"
                           onClick={handleTestMapsInEdit}
-                          className="text-blue-600 font-bold hover:underline flex items-center gap-0.5"
+                          className="text-blue-600 font-bold hover:underline flex items-center gap-0.5 bg-blue-50 px-2 py-0.5 rounded border border-blue-200"
                         >
-                          <span>Uji Buka Titik Maps</span>
+                          <span>🔗 Uji Titik di Maps</span>
                           <ExternalLink className="w-2.5 h-2.5" />
                         </button>
                       )}
@@ -574,6 +688,112 @@ export default function CustomerDetailModal({ customerId, onClose, onCustomerUpd
         </div>
 
       </div>
+
+      {/* Interactive GPS Permission Guide Modal */}
+      {showGpsGuide && createPortal(
+        <div className="fixed inset-0 z-[100000] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] my-auto animate-in fade-in zoom-in-95 duration-150">
+            
+            {/* Guide Header */}
+            <div className="p-4 sm:p-5 bg-gradient-to-r from-amber-500 to-orange-600 text-white flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-white/20">
+                  <Smartphone className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base">Panduan Izin Lokasi GPS di HP</h3>
+                  <p className="text-[11px] text-amber-100">Solusi "User denied Geolocation"</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowGpsGuide(false)}
+                className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Guide Body */}
+            <div className="p-4 sm:p-5 space-y-3.5 text-xs text-slate-700 overflow-y-auto flex-1">
+              <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 font-medium text-amber-900 leading-relaxed">
+                {gpsErrorType === 'denied' ? (
+                  <span>Browser di HP Anda saat ini memblokir akses lokasi otomatis. Ikuti 3 langkah mudah berikut untuk mengaktifkannya:</span>
+                ) : (
+                  <span>Sinyal GPS perangkat belum terbaca. Pastikan tombol GPS / Lokasi pada HP Anda dalam keadaan AKTIF (ON).</span>
+                )}
+              </div>
+
+              {/* Step by step */}
+              <div className="space-y-2.5">
+                <div className="flex items-start gap-2.5 p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                  <span className="w-5 h-5 rounded-full bg-emerald-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0">1</span>
+                  <div>
+                    <p className="font-bold text-slate-900">Ketuk ikon Gembok / Pengaturan Situs di atas</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">Di samping alamat website <code>jurnaldimas.onrender.com</code>, ketuk ikon 🔒 atau ⚙️.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5 p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                  <span className="w-5 h-5 rounded-full bg-emerald-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0">2</span>
+                  <div>
+                    <p className="font-bold text-slate-900">Aktifkan Izin Lokasi (Location)</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">Pilih menu <b>Izin (Permissions)</b> ➔ ubah <b>Lokasi (Location)</b> menjadi <b>Izinkan (Allow)</b>.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-2.5 p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                  <span className="w-5 h-5 rounded-full bg-emerald-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0">3</span>
+                  <div>
+                    <p className="font-bold text-slate-900">Nyalakan Tombol GPS HP</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">Tarik bilah notifikasi atas HP Anda dan pastikan fitur <b>Lokasi / GPS</b> sudah Menyala.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Alternative Quick Shortcut */}
+              <div className="p-3 bg-blue-50 rounded-2xl border border-blue-200 space-y-1.5">
+                <p className="font-bold text-blue-900 text-[11px] flex items-center gap-1">
+                  <span>💡 Cara Alternatif (Sangat Cepat):</span>
+                </p>
+                <p className="text-[11px] text-blue-800 leading-relaxed">
+                  Buka aplikasi <b>Google Maps</b> di HP Anda ➔ Cari toko atau tekan lama pada peta ➔ Ketuk <b>Bagikan (Share)</b> ➔ <b>Salin Link (Copy link)</b> ➔ Tempel pada kotak input di atas.
+                </p>
+              </div>
+            </div>
+
+            {/* Guide Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowGpsGuide(false);
+                  handleOpenGoogleMapsPicker();
+                }}
+                className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1 shadow-xs"
+              >
+                <Search className="w-3.5 h-3.5" />
+                <span>Buka Google Maps</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowGpsGuide(false);
+                  setTimeout(() => handleGetCurrentGps(), 300);
+                }}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 shadow-xs"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Coba Ambil GPS Lagi</span>
+              </button>
+            </div>
+
+          </div>
+        </div>,
+        document.body
+      )}
+
     </div>,
     document.body
   );
